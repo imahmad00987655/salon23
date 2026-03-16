@@ -3,9 +3,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Moon, Sun, Save, Eye, EyeOff, Shield, Key } from "lucide-react";
 
-const UPDATE_PROFILE_API = "http://localhost/salon-spark-main/api/update_profile.php";
-const USERS_API = "http://localhost/salon-spark-main/api/users.php";
-const UPDATE_USER_PASSWORD_API = "http://localhost/salon-spark-main/api/update_user_password.php";
+const UPDATE_PROFILE_API = "https://saddlebrown-antelope-612005.hostingersite.com/update_profile.php";
+const USERS_API = "https://saddlebrown-antelope-612005.hostingersite.com/users.php";
+const UPDATE_USER_PASSWORD_API = "https://saddlebrown-antelope-612005.hostingersite.com/update_user_password.php";
 
 type ListUser = { id: number; name: string; email: string; role: string };
 

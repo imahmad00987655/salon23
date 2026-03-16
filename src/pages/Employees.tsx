@@ -4,8 +4,8 @@ import { Plus, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
-const EMPLOYEES_API_BASE = "http://localhost/salon-spark-main/api/employees.php";
-const TRANSACTIONS_API_BASE = "http://localhost/salon-spark-main/api/transactions.php";
+const EMPLOYEES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/employees.php";
+const TRANSACTIONS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/transactions.php";
 
 const Employees = () => {
   const [employeeList, setEmployeeList] = useState<Employee[]>([]);

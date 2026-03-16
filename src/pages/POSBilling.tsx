@@ -10,12 +10,12 @@ import { DEFAULT_DISCOUNTS, DISCOUNTS_STORAGE_KEY } from "@/lib/discounts";
 import { openPrintWindow, buildProfessionalInvoiceHtml } from "@/lib/exporting";
 import { useAuth } from "@/contexts/AuthContext";
 
-const TRANSACTIONS_API_BASE = "http://localhost/salon-spark-main/api/transactions.php";
-const SERVICES_API_BASE = "http://localhost/salon-spark-main/api/services.php";
-const CUSTOMERS_API_BASE = "http://localhost/salon-spark-main/api/customers.php";
-const EMPLOYEES_API_BASE = "http://localhost/salon-spark-main/api/employees.php";
-const PACKAGES_API_BASE = "http://localhost/salon-spark-main/api/packages.php";
-const DISCOUNTS_API_BASE = "http://localhost/salon-spark-main/api/discounts.php";
+const TRANSACTIONS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/transactions.php";
+const SERVICES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/services.php";
+const CUSTOMERS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/customers.php";
+const EMPLOYEES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/employees.php";
+const PACKAGES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/packages.php";
+const DISCOUNTS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/discounts.php";
 
 const POSBilling = () => {
   const { user } = useAuth();

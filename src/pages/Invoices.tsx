@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { openPrintWindow, buildProfessionalInvoiceHtml, downloadCsv } from "@/lib/exporting";
 import { useAuth } from "@/contexts/AuthContext";
 
-const TRANSACTIONS_API_BASE = "http://localhost/salon-spark-main/api/transactions.php";
+const TRANSACTIONS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/transactions.php";
 
 const Invoices = () => {
   const { user } = useAuth();

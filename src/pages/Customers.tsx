@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Customer } from "@/types/pos";
 import { Search, Plus, Phone, Mail, Calendar, X } from "lucide-react";
 
-const API_BASE = "http://localhost/salon-spark-main/api/customers.php";
+const API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/customers.php";
 
 const Customers = () => {
   const [customerList, setCustomerList] = useState<Customer[]>([]);

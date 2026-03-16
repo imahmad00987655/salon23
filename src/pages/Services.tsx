@@ -3,8 +3,8 @@ import { Service, ServiceCategory } from "@/types/pos";
 import { Plus, Search, X, Clock, ImagePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const SERVICES_API_BASE = "http://localhost/salon-spark-main/api/services.php";
-const CATEGORIES_API_BASE = "http://localhost/salon-spark-main/api/categories.php";
+const SERVICES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/services.php";
+const CATEGORIES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/categories.php";
 const UPLOADS_BASE = "http://localhost/salon-spark-main";
 
 const Services = () => {

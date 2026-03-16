@@ -4,9 +4,9 @@ import { StatCard } from "@/components/StatCard";
 import { Transaction, Employee } from "@/types/pos";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
-const TRANSACTIONS_API_BASE = "http://localhost/salon-spark-main/api/transactions.php";
-const CUSTOMERS_API_BASE = "http://localhost/salon-spark-main/api/customers.php";
-const SERVICES_API_BASE = "http://localhost/salon-spark-main/api/services.php";
+const TRANSACTIONS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/transactions.php";
+const CUSTOMERS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/customers.php";
+const SERVICES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/services.php";
 
 type RevenueCategory = { name: string; value: number; color?: string };
 
