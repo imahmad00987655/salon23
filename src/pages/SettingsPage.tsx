@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Moon, Sun, Save, Eye, EyeOff, Shield, Key } from "lucide-react";
+import { Moon, Sun, Save, Eye, EyeOff, Shield, Key, Search } from "lucide-react";
+import { useLocalStorageState } from "@/hooks/useLocalStorageState";
+import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "@/lib/appSettings";
+import { cn } from "@/lib/utils";
 
 const UPDATE_PROFILE_API = "https://saddlebrown-antelope-612005.hostingersite.com/update_profile.php";
 const USERS_API = "https://saddlebrown-antelope-612005.hostingersite.com/users.php";
@@ -12,6 +15,7 @@ type ListUser = { id: number; name: string; email: string; role: string };
 const SettingsPage = () => {
   const { user, setUserFromSettings } = useAuth();
   const { theme, toggle } = useTheme();
+  const [appSettings, setAppSettings] = useLocalStorageState(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newName, setNewName] = useState(user?.name ?? "");
   const [newEmail, setNewEmail] = useState(user?.email ?? "");
@@ -39,6 +43,8 @@ const SettingsPage = () => {
     null,
   );
   const [createUserLoading, setCreateUserLoading] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [activeSection, setActiveSection] = useState<"profile" | "users" | "passwords" | "billing">("profile");
 
   const canUpdateCredentials = user?.role === "super_admin" || user?.role === "admin";
   const isSuperAdmin = user?.role === "super_admin";
@@ -64,6 +70,15 @@ const SettingsPage = () => {
 
   const selectedTargetUser = users.find((u) => String(u.id) === passwordTargetId);
   const isChangingOwnPassword = selectedTargetUser && String(user?.id) === String(selectedTargetUser.id);
+  const visibleUsers = users.filter((u) => {
+    const q = userSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      u.name.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      u.role.toLowerCase().includes(q)
+    );
+  });
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,229 +235,304 @@ const SettingsPage = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-fade-in max-w-2xl">
+    <div className="w-full p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-fade-in">
       <div>
         <h1 className="text-2xl font-heading font-bold text-foreground">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">Application preferences</p>
       </div>
 
-      {/* Profile */}
-      <section className="bg-card border border-border rounded-lg p-5 space-y-4">
-        <h2 className="text-sm font-heading font-semibold text-card-foreground">Profile</h2>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-muted-foreground">Name</label>
-            <p className="text-sm text-foreground font-medium">{user?.name}</p>
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Email</label>
-            <p className="text-sm text-foreground">{user?.email}</p>
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Role</label>
-            <p className="text-sm text-foreground capitalize">{user?.role.replace("_", " ")}</p>
-          </div>
-        </div>
-
-        {canUpdateCredentials && (
-          <form onSubmit={handleUpdateProfile} className="pt-4 border-t border-border space-y-4">
-            <h3 className="text-sm font-medium text-card-foreground">Update login credentials</h3>
-            {message && (
-              <div
-                className={`text-sm rounded-lg px-3 py-2 ${message.type === "success" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}
-              >
-                {message.text}
-              </div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveSection("profile")}
+          className={cn(
+            "px-3 py-2 rounded-md border text-sm font-medium transition-colors",
+            activeSection === "profile"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-card text-foreground border-border hover:bg-accent"
+          )}
+        >
+          Profile
+        </button>
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={() => setActiveSection("users")}
+            className={cn(
+              "px-3 py-2 rounded-md border text-sm font-medium transition-colors",
+              activeSection === "users"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-foreground border-border hover:bg-accent"
             )}
-            <div className="space-y-1.5">
-              <label htmlFor="settings-currentPassword" className="text-xs text-muted-foreground">
-                Current password
-              </label>
-              <div className="relative">
-                <input
-                  id="settings-currentPassword"
-                  type={showCurrentPassword ? "text" : "password"}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-                >
-                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="settings-newName" className="text-xs text-muted-foreground">
-                New name
-              </label>
-              <input
-                id="settings-newName"
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="settings-newEmail" className="text-xs text-muted-foreground">
-                New email
-              </label>
-              <input
-                id="settings-newEmail"
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="settings-newPassword" className="text-xs text-muted-foreground">
-                New password (leave blank to keep current)
-              </label>
-              <div className="relative">
-                <input
-                  id="settings-newPassword"
-                  type={showNewPassword ? "text" : "password"}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min 6 characters"
-                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-                >
-                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-60"
-            >
-              <Save className="h-4 w-4" />
-              {loading ? "Saving…" : "Save changes"}
-            </button>
-          </form>
+          >
+            User management
+          </button>
         )}
-      </section>
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={() => setActiveSection("passwords")}
+            className={cn(
+              "px-3 py-2 rounded-md border text-sm font-medium transition-colors",
+              activeSection === "passwords"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-foreground border-border hover:bg-accent"
+            )}
+          >
+            Manage user passwords
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setActiveSection("billing")}
+          className={cn(
+            "px-3 py-2 rounded-md border text-sm font-medium transition-colors",
+            activeSection === "billing"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-card text-foreground border-border hover:bg-accent"
+          )}
+        >
+          Tax & Billing
+        </button>
+      </div>
 
-      {/* User management (Super Admin only) */}
-      {isSuperAdmin && (
-        <section className="bg-card border border-border rounded-lg p-5 space-y-6">
-          <div className="space-y-1">
-            <h2 className="text-sm font-heading font-semibold text-card-foreground flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              User management
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Create new users and manage passwords for Admin, Manager and Cashier accounts.
-            </p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Profile */}
+        {activeSection === "profile" && (
+          <section className="bg-card border border-border rounded-lg p-5 space-y-4 lg:col-span-12">
+          <h2 className="text-sm font-heading font-semibold text-card-foreground">Profile</h2>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Name</label>
+              <p className="text-sm text-foreground font-medium">{user?.name}</p>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Email</label>
+              <p className="text-sm text-foreground">{user?.email}</p>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Role</label>
+              <p className="text-sm text-foreground capitalize">{user?.role.replace("_", " ")}</p>
+            </div>
           </div>
 
-          {/* Create user */}
-          <form onSubmit={handleCreateUser} className="space-y-3 border border-border rounded-lg p-4 bg-muted/30">
-            <h3 className="text-xs font-semibold text-card-foreground flex items-center gap-1">
-              <Key className="h-3 w-3" />
-              Create new user
-            </h3>
-            {createUserMessage && (
-              <div
-                className={`text-sm rounded-lg px-3 py-2 ${
-                  createUserMessage.type === "success" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                }`}
-              >
-                {createUserMessage.text}
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <label htmlFor="settings-newUser-name" className="text-xs text-muted-foreground">
-                Full name <span className="text-destructive">*</span>
-              </label>
-              <input
-                id="settings-newUser-name"
-                type="text"
-                value={newUserName}
-                onChange={(e) => setNewUserName(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="settings-newUser-email" className="text-xs text-muted-foreground">
-                Email <span className="text-destructive">*</span>
-              </label>
-              <input
-                id="settings-newUser-email"
-                type="email"
-                value={newUserEmail}
-                onChange={(e) => setNewUserEmail(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="settings-newUser-role" className="text-xs text-muted-foreground">
-                Role <span className="text-destructive">*</span>
-              </label>
-              <select
-                id="settings-newUser-role"
-                value={newUserRole}
-                onChange={(e) => setNewUserRole(e.target.value as "admin" | "manager" | "cashier")}
-                className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="admin">Admin</option>
-                <option value="manager">Manager</option>
-                <option value="cashier">Cashier</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="settings-newUser-password" className="text-xs text-muted-foreground">
-                Password <span className="text-destructive">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  id="settings-newUser-password"
-                  type={showNewUserPassword ? "text" : "password"}
-                  value={newUserPassword}
-                  onChange={(e) => setNewUserPassword(e.target.value)}
-                  placeholder="Min 6 characters"
-                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewUserPassword(!showNewUserPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+          {canUpdateCredentials && (
+            <form onSubmit={handleUpdateProfile} className="pt-4 border-t border-border space-y-4">
+              <h3 className="text-sm font-medium text-card-foreground">Update login credentials</h3>
+              {message && (
+                <div
+                  className={`text-sm rounded-lg px-3 py-2 ${message.type === "success" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}
                 >
-                  {showNewUserPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                  {message.text}
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <label htmlFor="settings-currentPassword" className="text-xs text-muted-foreground">
+                  Current password
+                </label>
+                <div className="relative">
+                  <input
+                    id="settings-currentPassword"
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
-            </div>
-            <button
-              type="submit"
-              disabled={createUserLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-60"
-            >
-              <Save className="h-4 w-4" />
-              {createUserLoading ? "Creating…" : "Create user"}
-            </button>
-          </form>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label htmlFor="settings-newName" className="text-xs text-muted-foreground">
+                    New name
+                  </label>
+                  <input
+                    id="settings-newName"
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="settings-newEmail" className="text-xs text-muted-foreground">
+                    New email
+                  </label>
+                  <input
+                    id="settings-newEmail"
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="settings-newPassword" className="text-xs text-muted-foreground">
+                  New password (leave blank to keep current)
+                </label>
+                <div className="relative">
+                  <input
+                    id="settings-newPassword"
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min 6 characters"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                {loading ? "Saving…" : "Save changes"}
+              </button>
+            </form>
+          )}
+        </section>
+        )}
 
-          {/* Manage user passwords */}
-          {users.length > 0 && (
-            <form onSubmit={handleUpdateUserPassword} className="space-y-4 border border-border rounded-lg p-4">
+        {/* User management (Super Admin only) */}
+        {isSuperAdmin && activeSection === "users" && (
+          <section className="bg-card border border-border rounded-lg p-5 space-y-6 lg:col-span-12">
+            <div className="space-y-1">
+              <h2 className="text-sm font-heading font-semibold text-card-foreground flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                User management
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Create new users and manage passwords for Admin, Manager and Cashier accounts.
+              </p>
+            </div>
+
+            {/* Create user */}
+            <form onSubmit={handleCreateUser} className="space-y-3 border border-border rounded-lg p-4 bg-muted/30">
               <h3 className="text-xs font-semibold text-card-foreground flex items-center gap-1">
                 <Key className="h-3 w-3" />
-                Manage user passwords
+                Create new user
               </h3>
-              <p className="text-[11px] text-muted-foreground">
+              {createUserMessage && (
+                <div
+                  className={`text-sm rounded-lg px-3 py-2 ${
+                    createUserMessage.type === "success" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                  }`}
+                >
+                  {createUserMessage.text}
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label htmlFor="settings-newUser-name" className="text-xs text-muted-foreground">
+                    Full name <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    id="settings-newUser-name"
+                    type="text"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="settings-newUser-email" className="text-xs text-muted-foreground">
+                    Email <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    id="settings-newUser-email"
+                    type="email"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">
+                  Role <span className="text-destructive">*</span>
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["admin", "manager", "cashier"] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setNewUserRole(r)}
+                      className={`px-3 py-2 rounded-md border text-xs font-medium transition-colors ${
+                        newUserRole === r
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-foreground border-border hover:bg-accent"
+                      }`}
+                    >
+                      {r.charAt(0).toUpperCase() + r.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="settings-newUser-password" className="text-xs text-muted-foreground">
+                  Password <span className="text-destructive">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    id="settings-newUser-password"
+                    type={showNewUserPassword ? "text" : "password"}
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    placeholder="Min 6 characters"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showNewUserPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={createUserLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                {createUserLoading ? "Creating…" : "Create user"}
+              </button>
+            </form>
+          </section>
+        )}
+
+        {/* Manage user passwords (Super Admin only) */}
+        {isSuperAdmin && activeSection === "passwords" && users.length > 0 && (
+          <section className="bg-card border border-border rounded-lg p-5 space-y-6 lg:col-span-12">
+            <div className="space-y-1">
+              <h2 className="text-sm font-heading font-semibold text-card-foreground flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Manage user passwords
+              </h2>
+              <p className="text-xs text-muted-foreground">
                 When changing your own password, your current password is required.
               </p>
+            </div>
+            <form onSubmit={handleUpdateUserPassword} className="space-y-4">
               {passwordMessage && (
                 <div
                   className={`text-sm rounded-lg px-3 py-2 ${
@@ -452,23 +542,53 @@ const SettingsPage = () => {
                   {passwordMessage.text}
                 </div>
               )}
-              <div className="space-y-1.5">
-                <label htmlFor="settings-password-user" className="text-xs text-muted-foreground">
-                  Select user
-                </label>
-                <select
-                  id="settings-password-user"
-                  value={passwordTargetId}
-                  onChange={(e) => setPasswordTargetId(e.target.value)}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.email}) — {u.role.replace("_", " ")}
-                    </option>
-                  ))}
-                </select>
+
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Select user</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="Search user by name/email/role..."
+                    className="w-full pl-9 pr-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto border border-border rounded-md divide-y divide-border bg-background">
+                  {visibleUsers.map((u) => {
+                    const selected = String(u.id) === passwordTargetId;
+                    return (
+                      <label
+                        key={u.id}
+                        className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-accent/60 ${
+                          selected ? "bg-accent/60" : ""
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="settings-password-target"
+                          value={u.id}
+                          checked={selected}
+                          onChange={() => setPasswordTargetId(String(u.id))}
+                          className="rounded border-border"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground truncate">{u.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                        </div>
+                        <span className="text-[11px] px-2 py-0.5 rounded border border-border text-muted-foreground capitalize">
+                          {u.role.replace("_", " ")}
+                        </span>
+                      </label>
+                    );
+                  })}
+                  {visibleUsers.length === 0 && (
+                    <div className="px-3 py-3 text-xs text-muted-foreground">No users found.</div>
+                  )}
+                </div>
               </div>
+
               {isChangingOwnPassword && (
                 <div className="space-y-1.5">
                   <label htmlFor="settings-manage-currentPassword" className="text-xs text-muted-foreground">
@@ -493,6 +613,7 @@ const SettingsPage = () => {
                   </div>
                 </div>
               )}
+
               <div className="space-y-1.5">
                 <label htmlFor="settings-manage-newPassword" className="text-xs text-muted-foreground">
                   New password
@@ -525,9 +646,48 @@ const SettingsPage = () => {
                 {passwordLoading ? "Updating…" : "Update password"}
               </button>
             </form>
-          )}
-        </section>
-      )}
+          </section>
+        )}
+
+        {/* Tax & Billing */}
+        {activeSection === "billing" && (
+          <section className="bg-card border border-border rounded-lg p-5 space-y-4 lg:col-span-12">
+            <h2 className="text-sm font-heading font-semibold text-card-foreground">Tax & Billing</h2>
+            <div className="space-y-1.5">
+              <label htmlFor="settings-taxRate" className="text-xs text-muted-foreground">
+                Tax Rate (%)
+              </label>
+              <input
+                id="settings-taxRate"
+                type="number"
+                min={0}
+                max={100}
+                step={0.01}
+                value={Number.isFinite(appSettings.taxRate) ? appSettings.taxRate * 100 : 0}
+                onChange={(e) => {
+                  const pct = Number(e.target.value);
+                  const next = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) / 100 : 0;
+                  setAppSettings((prev) => ({ ...prev, taxRate: next }));
+                }}
+                className="w-full max-w-xs px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <p className="text-xs text-muted-foreground">Applies automatically in POS billing.</p>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="settings-invoicePrefix" className="text-xs text-muted-foreground">
+                Invoice Prefix
+              </label>
+              <input
+                id="settings-invoicePrefix"
+                value={appSettings.invoicePrefix}
+                onChange={(e) => setAppSettings((prev) => ({ ...prev, invoicePrefix: e.target.value }))}
+                className="w-full max-w-xs px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                placeholder="SALON-"
+              />
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 };

@@ -383,9 +383,7 @@ const Services = () => {
                       className="w-full text-sm text-foreground file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-primary file:text-primary-foreground file:text-sm"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Images are stored on the server in their original format and size.
-                      For best performance and storage, upload already-optimized JPG or WebP files (under ~1&nbsp;MB).
-                    </p>
+                      Images are stored on the server in their original format and size.                    </p>
                   </div>
                 </div>
               </div>

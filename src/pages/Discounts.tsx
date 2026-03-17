@@ -138,43 +138,6 @@ const Discounts = () => {
         ))}
       </div>
 
-      {/* Tax & Billing — used by POS */}
-      <section className="bg-card border border-border rounded-lg p-5 space-y-4">
-        <h2 className="text-sm font-heading font-semibold text-card-foreground">Tax & Billing</h2>
-        <div className="space-y-1.5">
-          <label htmlFor="discounts-taxRate" className="text-xs text-muted-foreground">
-            Tax Rate (%)
-          </label>
-          <input
-            id="discounts-taxRate"
-            type="number"
-            min={0}
-            max={100}
-            step={0.01}
-            value={Number.isFinite(settings.taxRate) ? settings.taxRate * 100 : 0}
-            onChange={(e) => {
-              const pct = Number(e.target.value);
-              const next = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) / 100 : 0;
-              setSettings((prev) => ({ ...prev, taxRate: next }));
-            }}
-            className="w-full max-w-xs px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-          />
-          <p className="text-xs text-muted-foreground">Applies automatically in POS billing.</p>
-        </div>
-        <div className="space-y-1.5">
-          <label htmlFor="discounts-invoicePrefix" className="text-xs text-muted-foreground">
-            Invoice Prefix
-          </label>
-          <input
-            id="discounts-invoicePrefix"
-            value={settings.invoicePrefix}
-            onChange={(e) => setSettings((prev) => ({ ...prev, invoicePrefix: e.target.value }))}
-            className="w-full max-w-xs px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            placeholder="SALON-"
-          />
-        </div>
-      </section>
-
       {showForm && (
         <div className="fixed inset-0 bg-foreground/20 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
           <div className="bg-card border border-border rounded-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
