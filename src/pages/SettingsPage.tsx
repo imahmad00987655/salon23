@@ -6,9 +6,9 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "@/lib/appSettings";
 import { cn } from "@/lib/utils";
 
-const UPDATE_PROFILE_API = "/api/update_profile.php";
-const USERS_API = "/api/users.php";
-const UPDATE_USER_PASSWORD_API = "/api/update_user_password.php";
+const UPDATE_PROFILE_API = import.meta.env.DEV ? "/api/update_profile.php" : "/update_profile.php";
+const USERS_API = import.meta.env.DEV ? "/api/users.php" : "/users.php";
+const UPDATE_USER_PASSWORD_API = import.meta.env.DEV ? "/api/update_user_password.php" : "/update_user_password.php";
 
 type ListUser = { id: number; name: string; email: string; role: string };
 
