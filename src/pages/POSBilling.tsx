@@ -730,20 +730,25 @@ const POSBilling = () => {
 
                             const submitEdited = async () => {
                               try {
-                                await fetch(TRANSACTIONS_API_BASE, {
+                                const res = await fetch(TRANSACTIONS_API_BASE, {
                                   method: "POST",
                                   headers: { "Content-Type": "application/json" },
                                   body: JSON.stringify(editedTx),
                                 });
+                                if (res.ok) {
+                                  const saved = (await res.json().catch(() => null)) as Transaction | null;
+                                  if (saved?.invoiceNumber) {
+                                    setModifiedTransaction(saved);
+                                    setTransactions((prev) => [...prev, saved]);
+                                    return;
+                                  }
+                                }
                               } catch (e) {
                                 console.error(e);
                               }
                             };
 
                             void submitEdited();
-
-                            setTransactions((prev) => [...prev, editedTx]);
-                            setModifiedTransaction(editedTx);
                           }}
                           className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border hover:bg-accent transition-colors"
                         >

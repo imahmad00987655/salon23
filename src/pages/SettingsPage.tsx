@@ -6,9 +6,9 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "@/lib/appSettings";
 import { cn } from "@/lib/utils";
 
-const UPDATE_PROFILE_API = "https://saddlebrown-antelope-612005.hostingersite.com/update_profile.php";
-const USERS_API = "https://saddlebrown-antelope-612005.hostingersite.com/users.php";
-const UPDATE_USER_PASSWORD_API = "https://saddlebrown-antelope-612005.hostingersite.com/update_user_password.php";
+const UPDATE_PROFILE_API = "/api/update_profile.php";
+const USERS_API = "/api/users.php";
+const UPDATE_USER_PASSWORD_API = "/api/update_user_password.php";
 
 type ListUser = { id: number; name: string; email: string; role: string };
 
@@ -26,6 +26,8 @@ const SettingsPage = () => {
   const [loading, setLoading] = useState(false);
 
   const [users, setUsers] = useState<ListUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
   const [passwordTargetId, setPasswordTargetId] = useState<string>("");
   const [manageCurrentPassword, setManageCurrentPassword] = useState("");
   const [manageNewPassword, setManageNewPassword] = useState("");
@@ -52,21 +54,30 @@ const SettingsPage = () => {
   useEffect(() => {
     if (!isSuperAdmin || !user) return;
     const load = async () => {
+      setUsersLoading(true);
+      setUsersError(null);
       try {
         const res = await fetch(USERS_API, {
           headers: { "X-User-Role": user.role },
         });
-        if (res.ok) {
-          const data = (await res.json()) as ListUser[];
-          setUsers(data);
-          if (data.length && !passwordTargetId) setPasswordTargetId(String(data[0].id));
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          setUsersError((err?.error as string) || "Failed to load users.");
+          setUsers([]);
+          return;
         }
+        const data = (await res.json()) as ListUser[];
+        setUsers(data);
+        if (data.length && !passwordTargetId) setPasswordTargetId(String(data[0].id));
       } catch {
-        // ignore
+        setUsersError("Network error while loading users.");
+        setUsers([]);
+      } finally {
+        setUsersLoading(false);
       }
     };
     load();
-  }, [isSuperAdmin, user?.role]);
+  }, [isSuperAdmin, user]);
 
   const selectedTargetUser = users.find((u) => String(u.id) === passwordTargetId);
   const isChangingOwnPassword = selectedTargetUser && String(user?.id) === String(selectedTargetUser.id);
@@ -521,7 +532,7 @@ const SettingsPage = () => {
         )}
 
         {/* Manage user passwords (Super Admin only) */}
-        {isSuperAdmin && activeSection === "passwords" && users.length > 0 && (
+        {isSuperAdmin && activeSection === "passwords" && (
           <section className="bg-card border border-border rounded-lg p-5 space-y-6 lg:col-span-12">
             <div className="space-y-1">
               <h2 className="text-sm font-heading font-semibold text-card-foreground flex items-center gap-2">
@@ -532,6 +543,13 @@ const SettingsPage = () => {
                 When changing your own password, your current password is required.
               </p>
             </div>
+            {usersLoading ? (
+              <div className="text-sm text-muted-foreground">Loading users…</div>
+            ) : usersError ? (
+              <div className="text-sm rounded-lg px-3 py-2 bg-destructive/10 text-destructive">{usersError}</div>
+            ) : users.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No users found.</div>
+            ) : (
             <form onSubmit={handleUpdateUserPassword} className="space-y-4">
               {passwordMessage && (
                 <div
@@ -646,6 +664,7 @@ const SettingsPage = () => {
                 {passwordLoading ? "Updating…" : "Update password"}
               </button>
             </form>
+            )}
           </section>
         )}
 

@@ -18,8 +18,18 @@ const Customers = () => {
       setError(null);
       const res = await fetch(API_BASE);
       if (!res.ok) throw new Error("Failed to load customers");
-      const data = (await res.json()) as Customer[];
-      setCustomerList(data);
+      const raw = (await res.json()) as any[];
+      const mapped: Customer[] = (raw || []).map((row: any) => ({
+        id: String(row.id),
+        name: String(row.name ?? ""),
+        phone: String(row.phone ?? ""),
+        email: String(row.email ?? ""),
+        notes: String(row.notes ?? ""),
+        preferences: String(row.preferences ?? ""),
+        lastVisit: String(row.last_visit ?? row.lastVisit ?? ""),
+        visitCount: Number(row.visit_count ?? row.visitCount ?? 0),
+      }));
+      setCustomerList(mapped);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -134,7 +144,7 @@ const Customers = () => {
                 <Mail className="h-3 w-3" /> {c.email}
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Calendar className="h-3 w-3" /> Last visit: {c.lastVisit}
+                <Calendar className="h-3 w-3" /> Last visit: {c.lastVisit || "—"}
               </div>
             </div>
             {c.notes && (
