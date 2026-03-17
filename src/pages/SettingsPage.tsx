@@ -6,9 +6,12 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "@/lib/appSettings";
 import { cn } from "@/lib/utils";
 
-const UPDATE_PROFILE_API = "/api/update_profile.php";
-const USERS_API = "/api/users.php";
-const UPDATE_USER_PASSWORD_API = "/api/update_user_password.php";
+const PROD_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com";
+const UPDATE_PROFILE_API = import.meta.env.DEV ? "/api/update_profile.php" : `${PROD_API_BASE}/update_profile.php`;
+const USERS_API = import.meta.env.DEV ? "/api/users.php" : `${PROD_API_BASE}/users.php`;
+const UPDATE_USER_PASSWORD_API = import.meta.env.DEV
+  ? "/api/update_user_password.php"
+  : `${PROD_API_BASE}/update_user_password.php`;
 
 type ListUser = { id: number; name: string; email: string; role: string };
 
@@ -62,7 +65,7 @@ const SettingsPage = () => {
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          setUsersError((err?.error as string) || "Failed to load users.");
+          setUsersError((err?.error as string) || `Failed to load users (${res.status}).`);
           setUsers([]);
           return;
         }
