@@ -157,19 +157,7 @@ const PRINT_HTML = (title: string, bodyHtml: string) => `<!doctype html>
 </html>`;
 
 export function openPrintWindow(title: string, bodyHtml: string) {
-  // Try popup first (user can "Save as PDF" from print dialog)
-  const w = window.open("", "_blank", "noopener,noreferrer");
-  if (w) {
-    w.document.write(PRINT_HTML(title, bodyHtml));
-    w.document.close();
-    w.focus();
-    w.setTimeout(() => {
-      w.print();
-    }, 300);
-    return;
-  }
-
-  // Fallback: hidden iframe (works when popups are blocked)
+  // Always use hidden iframe to avoid opening a new tab/window.
   const iframe = document.createElement("iframe");
   iframe.setAttribute("style", "position:absolute;width:0;height:0;border:0;visibility:hidden;");
   document.body.appendChild(iframe);
