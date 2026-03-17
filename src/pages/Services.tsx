@@ -5,7 +5,9 @@ import { cn } from "@/lib/utils";
 
 const SERVICES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/services.php";
 const CATEGORIES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/categories.php";
-const UPLOADS_BASE = "http://localhost/salon-spark-main";
+const UPLOADS_BASE = import.meta.env.DEV
+  ? "http://localhost/salon-spark-main"
+  : "https://saddlebrown-antelope-612005.hostingersite.com";
 
 const Services = () => {
   const [serviceList, setServiceList] = useState<Service[]>([]);
@@ -71,6 +73,12 @@ const Services = () => {
             description: String(row.category_description || ""),
           });
         }
+        const imageUrl = row.image_url
+          ? String(row.image_url).startsWith("http")
+            ? String(row.image_url)
+            : `${UPLOADS_BASE}/${String(row.image_url).replace(/^\//, "")}`
+          : undefined;
+
         return {
           id: String(row.id),
           name: String(row.name),
@@ -78,7 +86,7 @@ const Services = () => {
           price: Number(row.price),
           duration: Number(row.duration),
           active: Boolean(row.active),
-          image: row.image_url ? `${UPLOADS_BASE}/${row.image_url}` : undefined,
+          image: imageUrl,
         };
       });
       setServiceList(mapped);
