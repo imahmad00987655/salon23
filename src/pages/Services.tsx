@@ -107,6 +107,13 @@ const Services = () => {
   const handleAddNewCategory = async () => {
     const name = newCategoryName.trim();
     if (!name) return;
+    const duplicate = serviceCategories.some((c) => c.name.trim().toLowerCase() === name.toLowerCase());
+    if (duplicate) {
+      const msg = `Category "${name}" already exists. Please create a unique category name.`;
+      setError(msg);
+      window.alert(msg);
+      return;
+    }
     try {
       setError(null);
       const res = await fetch(CATEGORIES_API_BASE, {
@@ -136,9 +143,11 @@ const Services = () => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
+  const activeServices = filtered.filter((s) => s.active);
+  const inactiveServices = filtered.filter((s) => !s.active);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.max(1, Math.ceil(activeServices.length / pageSize));
+  const paginated = activeServices.slice((page - 1) * pageSize, page * pageSize);
 
   useEffect(() => {
     setPage(1);
@@ -324,14 +333,65 @@ const Services = () => {
         </table>
       </div>
 
-      {filtered.length > 0 && (
+      <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
+        <div className="px-4 py-3 border-b border-border bg-muted/30">
+          <h3 className="text-sm font-semibold text-foreground">Inactive Services ({inactiveServices.length})</h3>
+        </div>
+        <table className="w-full text-sm min-w-[600px]">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left py-3 px-3 sm:px-4 text-muted-foreground font-medium">Service</th>
+              <th className="text-left py-3 px-3 sm:px-4 text-muted-foreground font-medium">Category</th>
+              <th className="text-left py-3 px-3 sm:px-4 text-muted-foreground font-medium">Price</th>
+              <th className="text-left py-3 px-3 sm:px-4 text-muted-foreground font-medium">Duration</th>
+              <th className="text-left py-3 px-3 sm:px-4 text-muted-foreground font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {inactiveServices.map((s) => {
+              const cat = serviceCategories.find((c) => c.id === s.categoryId);
+              return (
+                <tr key={`inactive-${s.id}`} className="border-b border-border last:border-0 hover:bg-accent/50 cursor-pointer" onClick={() => { setEditing(s); setShowForm(true); }}>
+                  <td className="py-3 px-3 sm:px-4 font-medium text-foreground">
+                    <div className="flex items-center gap-3">
+                      {s.image ? (
+                        <img src={s.image} alt={s.name} className="h-9 w-9 rounded-md object-cover border border-border" />
+                      ) : (
+                        <div className="h-9 w-9 rounded-md bg-muted flex items-center justify-center">
+                          <ImagePlus className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      {s.name}
+                    </div>
+                  </td>
+                  <td className="py-3 px-3 sm:px-4 text-muted-foreground">{cat?.name}</td>
+                  <td className="py-3 px-3 sm:px-4 text-foreground">Rs. {s.price}</td>
+                  <td className="py-3 px-3 sm:px-4 text-muted-foreground"><Clock className="h-3 w-3 inline mr-1" />{s.duration} min</td>
+                  <td className="py-3 px-3 sm:px-4">
+                    <button onClick={(e) => { e.stopPropagation(); toggleActive(s.id); }} className="px-2 py-0.5 rounded text-xs font-medium bg-destructive/10 text-destructive">
+                      Inactive
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {inactiveServices.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-muted-foreground">No inactive services</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {activeServices.length > 0 && (
         <div className="flex items-center justify-between gap-3 text-xs sm:text-sm text-muted-foreground">
           <div>
             Showing{" "}
             <span className="font-medium text-foreground">
-              {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filtered.length)}
+              {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, activeServices.length)}
             </span>{" "}
-            of <span className="font-medium text-foreground">{filtered.length}</span> services
+            of <span className="font-medium text-foreground">{activeServices.length}</span> active services
           </div>
           <div className="flex items-center gap-2">
             <button

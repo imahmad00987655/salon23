@@ -17,6 +17,7 @@ import Employees from "./pages/Employees";
 import Reports from "./pages/Reports";
 import SettingsPage from "./pages/SettingsPage";
 import Invoices from "./pages/Invoices";
+import Expenses from "./pages/Expenses";
 import NotFound from "./pages/NotFound";
 import { ReactNode } from "react";
 
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Route path="/employees" element={<ProtectedRoute path="/employees"><Employees /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute path="/reports"><Reports /></ProtectedRoute>} />
         <Route path="/invoices" element={<ProtectedRoute path="/invoices"><Invoices /></ProtectedRoute>} />
+        <Route path="/expenses" element={<ProtectedRoute path="/expenses"><Expenses /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute path="/settings"><SettingsPage /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -23,6 +23,7 @@ export interface Customer {
   preferences: string;
   lastVisit: string;
   visitCount: number;
+  active: boolean;
 }
 
 export interface Employee {
@@ -86,4 +87,14 @@ export interface Discount {
   maxCap?: number;
   reason: string;
   usageCount: number;
+}
+
+export interface Expense {
+  id: string;
+  title: string;
+  amount: number;
+  notes: string;
+  expenseDate: string;
+  createdByName?: string;
+  createdAt?: string;
 }

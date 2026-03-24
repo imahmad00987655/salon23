@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingCart, Users, Scissors, Gift, Percent,
-  UserCog, BarChart3, Settings, Moon, Sun, LogOut, ChevronLeft, FileText,
+  UserCog, BarChart3, Settings, Moon, Sun, LogOut, ChevronLeft, FileText, ReceiptText,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,7 @@ const navItems = [
   { label: "Employees", icon: UserCog, path: "/employees" },
   { label: "Reports", icon: BarChart3, path: "/reports" },
   { label: "Invoices", icon: FileText, path: "/invoices" },
+  { label: "Expenses", icon: ReceiptText, path: "/expenses" },
   { label: "Settings", icon: Settings, path: "/settings" },
 ];
 

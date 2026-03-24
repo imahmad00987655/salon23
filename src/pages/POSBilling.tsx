@@ -96,6 +96,7 @@ const POSBilling = () => {
             preferences: String(row.preferences ?? ""),
             lastVisit: String(row.last_visit ?? ""),
             visitCount: Number(row.visit_count ?? 0),
+            active: Boolean(row.active ?? 1),
           }));
           setCustomers(mappedCustomers);
           if (!selectedCustomer && mappedCustomers.length > 0) {

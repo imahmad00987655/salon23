@@ -28,6 +28,7 @@ const Customers = () => {
         preferences: String(row.preferences ?? ""),
         lastVisit: String(row.last_visit ?? row.lastVisit ?? ""),
         visitCount: Number(row.visit_count ?? row.visitCount ?? 0),
+        active: Boolean(row.active ?? 1),
       }));
       setCustomerList(mapped);
     } catch (e) {
@@ -56,6 +57,7 @@ const Customers = () => {
       email: (fd.get("email") as string) ?? "",
       notes: (fd.get("notes") as string) ?? "",
       preferences: (fd.get("preferences") as string) ?? "",
+      active: fd.get("active") === "on",
     };
 
     const submit = async () => {
@@ -135,6 +137,9 @@ const Customers = () => {
                 <p className="text-sm font-medium text-card-foreground">{c.name}</p>
                 <p className="text-xs text-muted-foreground">{c.visitCount} visits</p>
               </div>
+              <span className={`ml-auto px-2 py-0.5 rounded text-xs font-medium ${c.active ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                {c.active ? "Active" : "Inactive"}
+              </span>
             </div>
             <div className="mt-3 space-y-1">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -230,6 +235,16 @@ const Customers = () => {
                   className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                 />
               </div>
+              <label htmlFor="customer-active" className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  id="customer-active"
+                  name="active"
+                  type="checkbox"
+                  defaultChecked={editingCustomer?.active ?? true}
+                  className="rounded border-border"
+                />
+                Active customer
+              </label>
               <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity">
                 {editingCustomer ? "Update" : "Create"} Customer
               </button>
