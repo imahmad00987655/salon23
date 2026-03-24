@@ -4,9 +4,7 @@ import { StatCard } from "@/components/StatCard";
 import { Transaction, Employee } from "@/types/pos";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
-const TRANSACTIONS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/transactions.php";
-const CUSTOMERS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/customers.php";
-const SERVICES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/services.php";
+const STATS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/stats.php";
 
 type RevenueCategory = { name: string; value: number; color?: string };
 
@@ -23,131 +21,30 @@ const Dashboard = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const today = new Date();
-        const todayStr = today.toISOString().slice(0, 10);
-        const weekAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .slice(0, 10);
+        const res = await fetch(STATS_API_BASE);
+        if (!res.ok) return;
+        const data = await res.json();
 
-        const [txRes, custRes, svcRes] = await Promise.all([
-          fetch(TRANSACTIONS_API_BASE),
-          fetch(CUSTOMERS_API_BASE),
-          fetch(SERVICES_API_BASE),
-        ]);
+        setTodayRevenue(Number(data.todayRevenue ?? 0));
+        setTotalCustomers(Number(data.totalCustomers ?? 0));
+        setServicesToday(Number(data.servicesToday ?? 0));
+        setActiveServicesCount(Number(data.activeServicesCount ?? 0));
+        setSalesData(Array.isArray(data.salesData) ? data.salesData : []);
+        setRevenueByCategory(Array.isArray(data.revenueByCategory) ? data.revenueByCategory : []);
+        setRecentTransactions(Array.isArray(data.recentTransactions) ? data.recentTransactions : []);
 
-        let transactions: Transaction[] = [];
-        if (txRes.ok) {
-          const data = (await txRes.json()) as Transaction[];
-          transactions = Array.isArray(data) ? data : [];
-
-          setRecentTransactions(
-            [...transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, 5)
-          );
-
-          const todayRev = transactions
-            .filter((t) => t.date === todayStr)
-            .reduce((sum, t) => sum + Number(t.total ?? 0), 0);
-          setTodayRevenue(Math.round(todayRev * 100) / 100);
-
-          const servicesCountToday = transactions
-            .filter((t) => t.date === todayStr)
-            .reduce((sum, t) => sum + t.items.reduce((s, i) => s + i.quantity, 0), 0);
-          setServicesToday(servicesCountToday);
-        }
-
-        if (custRes.ok) {
-          const custData = await custRes.json();
-          setTotalCustomers((custData as any[]).length);
-        }
-
-        let serviceRows: any[] = [];
-        if (svcRes.ok) {
-          const svcData = await svcRes.json();
-          serviceRows = Array.isArray(svcData) ? (svcData as any[]) : [];
-          const activeCount = serviceRows.filter((s) => Boolean(s.active)).length;
-          setActiveServicesCount(activeCount);
-        }
-
-        // Build sales data (last 7 days) from transactions
-        if (transactions.length) {
-          const dailyMap: Record<string, number> = {};
-          for (const t of transactions) {
-            if (t.date >= weekAgo && t.date <= todayStr) {
-              dailyMap[t.date] = (dailyMap[t.date] ?? 0) + Number(t.total ?? 0);
-            }
-          }
-          const dailyPoints = Object.entries(dailyMap)
-            .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-            .map(([date, revenue]) => ({ date, revenue: Math.round(Number(revenue) * 100) / 100 }));
-          setSalesData(dailyPoints);
-        } else {
-          setSalesData([]);
-        }
-
-        // Revenue by category from transactions + services
-        if (transactions.length && serviceRows.length) {
-          const serviceToCategory = new Map<string, string>();
-          for (const row of serviceRows) {
-            const id = String(row.id);
-            const categoryName = String(row.category_name ?? "Other");
-            serviceToCategory.set(id, categoryName);
-          }
-
-          const catTotals: Record<string, number> = {};
-          for (const t of transactions) {
-            if (t.date < weekAgo || t.date > todayStr) continue;
-            for (const it of t.items ?? []) {
-              const catName = serviceToCategory.get(it.serviceId) ?? "Other";
-              const amount = Number(it.price ?? 0) * Number(it.quantity ?? 0);
-              catTotals[catName] = (catTotals[catName] ?? 0) + amount;
-            }
-          }
-
-          const revenueCats: RevenueCategory[] = Object.entries(catTotals).map(([name, value]) => ({
-            name,
-            value: Math.round(Number(value) * 100) / 100,
-          }));
-          setRevenueByCategory(revenueCats);
-        } else {
-          setRevenueByCategory([]);
-        }
-
-        // Top employee from transactions
-        if (transactions.length) {
-          const empTotals = new Map<string, { name: string; revenue: number }>();
-          for (const t of transactions) {
-            for (const it of t.items ?? []) {
-              const key = it.employeeId || "unknown";
-              const current = empTotals.get(key) ?? { name: it.employeeName || "Unknown", revenue: 0 };
-              current.revenue += Number(it.price ?? 0) * Number(it.quantity ?? 0);
-              empTotals.set(key, current);
-            }
-          }
-          if (empTotals.size > 0) {
-            let bestId: string | null = null;
-            let best = { name: "", revenue: 0 };
-            for (const [id, info] of empTotals.entries()) {
-              if (!bestId || info.revenue > best.revenue) {
-                bestId = id;
-                best = info;
-              }
-            }
-            if (bestId) {
-              setTopEmployee({
-                id: bestId,
-                name: best.name,
-                role: "",
-                phone: "",
-                commissionRate: 0,
-                active: true,
-                servicesPerformed: 0,
-                revenueGenerated: Math.round(best.revenue * 100) / 100,
-                commissionEarned: 0,
-              });
-            }
-          } else {
-            setTopEmployee(null);
-          }
+        if (data.topEmployee) {
+          setTopEmployee({
+            id: String(data.topEmployee.id ?? ""),
+            name: String(data.topEmployee.name ?? "Unknown"),
+            role: "",
+            phone: "",
+            commissionRate: 0,
+            active: true,
+            servicesPerformed: 0,
+            revenueGenerated: Number(data.topEmployee.revenueGenerated ?? 0),
+            commissionEarned: 0,
+          });
         } else {
           setTopEmployee(null);
         }

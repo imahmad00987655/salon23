@@ -12,11 +12,14 @@ const Customers = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadCustomers = async () => {
+  const loadCustomers = async (query = "") => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(API_BASE);
+      const params = new URLSearchParams();
+      params.set("limit", "200");
+      if (query.trim()) params.set("search", query.trim());
+      const res = await fetch(`${API_BASE}?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to load customers");
       const raw = (await res.json()) as any[];
       const mapped: Customer[] = (raw || []).map((row: any) => ({
@@ -39,14 +42,17 @@ const Customers = () => {
   };
 
   useEffect(() => {
-    loadCustomers();
+    void loadCustomers();
   }, []);
 
-  const filtered = customerList.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search)
-  );
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadCustomers(search);
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  const filtered = customerList;
 
   const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

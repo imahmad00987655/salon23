@@ -65,7 +65,13 @@ const Invoices = () => {
 
   const loadTransactions = async () => {
     try {
-      const res = await fetch(TRANSACTIONS_API_BASE);
+      const params = new URLSearchParams();
+      params.set("limit", "200");
+      if (fromDate) params.set("from", fromDate);
+      if (toDate) params.set("to", toDate);
+      if (search.trim()) params.set("search", search.trim());
+
+      const res = await fetch(`${TRANSACTIONS_API_BASE}?${params.toString()}`);
       if (!res.ok) return;
       const data = (await res.json()) as Transaction[];
       setTransactions(Array.isArray(data) ? data : []);
@@ -73,6 +79,13 @@ const Invoices = () => {
       // ignore
     }
   };
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadTransactions();
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [search, fromDate, toDate]);
 
   const handleDeleteInvoice = async (tx: Transaction) => {
     if (!isSuperAdmin || !window.confirm(`Delete invoice ${tx.invoiceNumber}? This cannot be undone.`)) return;
