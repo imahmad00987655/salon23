@@ -19,20 +19,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-
-          if (id.includes("react") || id.includes("scheduler")) return "react-vendor";
-          if (id.includes("react-router")) return "router-vendor";
-          if (id.includes("recharts") || id.includes("d3-")) return "charts-vendor";
-          if (id.includes("@radix-ui")) return "radix-vendor";
-          if (id.includes("framer-motion")) return "motion-vendor";
-
-          return "vendor";
-        },
-      },
-    },
+    // Keep Vite's default chunk graph to avoid runtime dependency-order issues on some hosts.
+    chunkSizeWarningLimit: 1200,
   },
 }));
