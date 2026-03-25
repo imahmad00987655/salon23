@@ -10,6 +10,7 @@ const UPLOADS_BASE = import.meta.env.DEV
   : "https://saddlebrown-antelope-612005.hostingersite.com";
 
 const Services = () => {
+  const NO_CATEGORY_ID = "none";
   const [serviceList, setServiceList] = useState<Service[]>([]);
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [search, setSearch] = useState("");
@@ -65,8 +66,10 @@ const Services = () => {
       const raw = (await svcRes.json()) as any[];
       const catMap = new Map<string, ServiceCategory>();
       const mapped: Service[] = raw.map((row) => {
-        const catId = `cat-${row.category_id}`;
-        if (!catMap.has(catId)) {
+        const hasCategory =
+          row.category_id !== null && row.category_id !== undefined && Number(row.category_id) > 0;
+        const catId = hasCategory ? `cat-${row.category_id}` : NO_CATEGORY_ID;
+        if (hasCategory && !catMap.has(catId)) {
           catMap.set(catId, {
             id: catId,
             name: String(row.category_name || "Uncategorized"),
@@ -158,7 +161,7 @@ const Services = () => {
     const fd = new FormData(e.currentTarget);
     const name = (fd.get("name") as string)?.trim() ?? "";
     const categoryId = fd.get("categoryId") as string;
-    const numericCategoryId = Number(String(categoryId).replace("cat-", ""));
+    const numericCategoryId = categoryId === NO_CATEGORY_ID ? 0 : Number(String(categoryId).replace("cat-", ""));
     const price = Number(fd.get("price"));
     const duration = Number(fd.get("duration"));
     const active = fd.get("active") === "on";
@@ -224,7 +227,7 @@ const Services = () => {
       try {
         setLoading(true);
         setError(null);
-        const numericCategoryId = Number(String(svc.categoryId).replace("cat-", ""));
+        const numericCategoryId = svc.categoryId === NO_CATEGORY_ID ? 0 : Number(String(svc.categoryId).replace("cat-", ""));
         const res = await fetch(`${SERVICES_API_BASE}?id=${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -470,14 +473,15 @@ const Services = () => {
 
               <div className="space-y-1.5">
                 <label htmlFor="service-categoryId" className="text-sm text-muted-foreground">
-                  Category <span className="text-destructive">*</span>
+                  Category (optional)
                 </label>
                 <select
                   id="service-categoryId"
                   name="categoryId"
-                  defaultValue={editing?.categoryId || serviceCategories[0]?.id}
+                  defaultValue={editing?.categoryId || serviceCategories[0]?.id || NO_CATEGORY_ID}
                   className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 >
+                  <option value={NO_CATEGORY_ID}>No category (remove)</option>
                   {serviceCategories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}

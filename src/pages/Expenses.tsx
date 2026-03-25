@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Expense } from "@/types/pos";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { downloadCsv } from "@/lib/exporting";
 
 const EXPENSES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/expenses.php";
 
@@ -14,6 +15,11 @@ const Expenses = () => {
   const [editing, setEditing] = useState<Expense | null>(null);
 
   const canEditDelete = user?.role === "admin" || user?.role === "super_admin";
+
+  type ExpenseFilterMode = "weekly" | "monthly" | "custom";
+  const [filterMode, setFilterMode] = useState<ExpenseFilterMode>("monthly");
+  const [customFrom, setCustomFrom] = useState<string>("");
+  const [customTo, setCustomTo] = useState<string>("");
 
   const loadExpenses = async () => {
     try {
@@ -46,10 +52,54 @@ const Expenses = () => {
     void loadExpenses();
   }, []);
 
+  const filteredExpenses = useMemo(() => {
+    const ymd = (d: Date) => d.toISOString().slice(0, 10);
+    const today = new Date();
+
+    let from: string | null = null;
+    let to: string | null = null;
+
+    if (filterMode === "weekly") {
+      const fromD = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+      from = ymd(fromD);
+      to = ymd(today);
+    } else if (filterMode === "monthly") {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1);
+      const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      from = ymd(start);
+      to = ymd(end);
+    } else {
+      from = customFrom || null;
+      to = customTo || null;
+    }
+
+    return expenses.filter((e) => {
+      const d = e.expenseDate;
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+  }, [customFrom, customTo, expenses, filterMode]);
+
   const totalAmount = useMemo(
-    () => expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0),
-    [expenses]
+    () => filteredExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0),
+    [filteredExpenses]
   );
+
+  const handleExportCsv = () => {
+    downloadCsv(
+      "expenses-report.csv",
+      (filteredExpenses || []).map((e) => ({
+        id: e.id,
+        title: e.title,
+        amount: e.amount,
+        notes: e.notes,
+        expenseDate: e.expenseDate,
+        createdByName: e.createdByName ?? "",
+        createdAt: e.createdAt ?? "",
+      }))
+    );
+  };
 
   const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -119,20 +169,87 @@ const Expenses = () => {
         <div>
           <h1 className="text-2xl font-heading font-bold text-foreground">Expenses</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {loading ? "Loading..." : `${expenses.length} entries • Total Rs. ${totalAmount.toFixed(2)}`}
+            {loading ? "Loading..." : `${filteredExpenses.length} entries • Total Rs. ${totalAmount.toFixed(2)}`}
           </p>
           {error && <p className="text-xs text-destructive mt-1">{error}</p>}
         </div>
-        <button
-          onClick={() => {
-            setEditing(null);
-            setShowForm(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
-        >
-          <Plus className="h-4 w-4" />
-          Add Expense
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium border border-border hover:bg-accent transition-colors"
+          >
+            Export CSV
+          </button>
+          <button
+            onClick={() => {
+              setEditing(null);
+              setShowForm(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            <Plus className="h-4 w-4" />
+            Add Expense
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-muted-foreground" htmlFor="expense-filter">
+            Filter
+          </label>
+          <select
+            id="expense-filter"
+            value={filterMode}
+            onChange={(e) => setFilterMode(e.target.value as ExpenseFilterMode)}
+            className="px-3 py-2 bg-card text-foreground rounded-md border border-border text-sm"
+          >
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+
+        {filterMode === "custom" && (
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <label htmlFor="expense-from" className="text-xs text-muted-foreground">
+                From
+              </label>
+              <input
+                id="expense-from"
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="expense-to" className="text-xs text-muted-foreground">
+                To
+              </label>
+              <input
+                id="expense-to"
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCustomFrom("");
+                setCustomTo("");
+              }}
+              className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-md text-xs md:text-sm border border-border hover:bg-accent transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
@@ -148,7 +265,7 @@ const Expenses = () => {
             </tr>
           </thead>
           <tbody>
-            {expenses.map((item) => (
+            {filteredExpenses.map((item) => (
               <tr key={item.id} className="border-b border-border last:border-0 hover:bg-accent/50">
                 <td className="py-3 px-4 text-foreground">{item.expenseDate || "—"}</td>
                 <td className="py-3 px-4 text-foreground font-medium">{item.title}</td>
@@ -184,10 +301,10 @@ const Expenses = () => {
                 </td>
               </tr>
             ))}
-            {expenses.length === 0 && (
+            {filteredExpenses.length === 0 && (
               <tr>
                 <td colSpan={6} className="py-12 text-center text-muted-foreground">
-                  No expense entries yet
+                  No expense entries for selected filter
                 </td>
               </tr>
             )}

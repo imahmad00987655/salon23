@@ -34,24 +34,25 @@ export function downloadCsv(filename: string, rows: Array<Record<string, unknown
 
 const PRINT_STYLES = `
   :root { color-scheme: light; }
-  body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 24px; max-width: 800px; margin-left: auto; margin-right: auto; }
-  .invoice-header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #333; }
-  .invoice-header img { display: block; margin: 0 auto 8px; max-height: 140px; max-width: 100%; object-fit: contain; }
-  .invoice-header h1 { margin: 8px 0 4px; font-size: 24px; }
-  .invoice-header .tagline { color: #555; font-size: 14px; }
-  h1.invoice-title { font-size: 20px; margin: 20px 0 8px; }
+  @page { size: 80mm auto; margin: 0; }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 0; padding: 8px 10px; font-size: 12px; }
+  .invoice-header { text-align: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #333; }
+  .invoice-header img { display: block; margin: 0 auto 4px; max-height: 60px; max-width: 100%; object-fit: contain; }
+  .invoice-header .tagline { color: #555; font-size: 11px; margin: 2px 0; }
+  h1.invoice-title { font-size: 14px; margin: 10px 0 6px; }
   .muted { color: #555; }
-  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; vertical-align: top; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { text-align: left; padding: 4px 2px; border-bottom: 1px solid #ddd; vertical-align: top; }
   .right { text-align: right; }
-  .totals { margin-top: 16px; display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; max-width: 360px; margin-left: auto; }
+  .totals { margin-top: 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; max-width: 240px; margin-left: auto; }
   .totals .label { color: #555; }
   .totals .value { text-align: right; }
-  .totals .grand { font-weight: 700; font-size: 18px; border-top: 2px solid #000; padding-top: 8px; margin-top: 8px; }
-  .terms { margin-top: 28px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 12px; color: #555; }
-  .terms ul { margin: 8px 0 0; padding-left: 20px; }
-  .thank-you { margin-top: 24px; text-align: center; font-size: 16px; font-weight: 600; }
-  @media print { body { margin: 0.5in; } }
+  .totals .grand { font-weight: 700; font-size: 14px; border-top: 2px solid #000; padding-top: 6px; margin-top: 6px; }
+  .terms { margin-top: 16px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 12px; font-weight: 700; color: #111; }
+  .terms ul { margin: 8px 0 0; padding-left: 18px; }
+  .terms li { margin: 2px 0; font-weight: 700; }
+  .thank-you { margin-top: 14px; text-align: center; font-size: 12px; font-weight: 700; }
+  @media print { body { padding: 0 8px; } }
 `;
 
 export type ProfessionalInvoiceOptions = {
@@ -72,9 +73,10 @@ export type ProfessionalInvoiceOptions = {
 };
 
 const DEFAULT_TERMS = [
-  "Payment is due upon receipt unless otherwise agreed.",
-  "We reserve the right to charge interest on overdue amounts.",
-  "Prices are subject to change without notice.",
+  "Please arrive on time for your appointment.",
+  "Rescheduling is available with at least 24 hours notice.",
+  "Final pricing depends on consultation and service requirement.",
+  "Please follow after-care instructions for best results.",
 ];
 
 export function buildProfessionalInvoiceHtml(options: ProfessionalInvoiceOptions): string {
@@ -109,7 +111,7 @@ export function buildProfessionalInvoiceHtml(options: ProfessionalInvoiceOptions
   return `
   <div class="invoice-header">
     ${logoUrl ? `<img src="${logoUrl}" alt="${companyName}" />` : ""}
-    <h1>${companyName}</h1>
+    ${!logoUrl ? `<h1>${companyName}</h1>` : ""}
     ${companyTagline ? `<p class="tagline">${companyTagline}</p>` : ""}
     ${cashierName ? `<p class="muted"><strong>Cashier:</strong> ${cashierName}</p>` : ""}
   </div>
@@ -138,10 +140,10 @@ export function buildProfessionalInvoiceHtml(options: ProfessionalInvoiceOptions
   <div class="terms">
     <strong>Terms &amp; Conditions</strong>
     <ul>
-      ${terms.map((t) => `<li>${t}</li>`).join("")}
+      ${terms.map((t) => `<li><strong>${t}</strong></li>`).join("")}
     </ul>
   </div>
-  <p class="thank-you">Thank you for your business!</p>
+  <p class="thank-you">Thanks for visiting our parlour. See you again soon!</p>
   `;
 }
 
