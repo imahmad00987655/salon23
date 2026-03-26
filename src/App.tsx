@@ -6,20 +6,21 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AppLayout } from "@/components/AppLayout";
-import LoginPage from "./pages/LoginPage";
-import Dashboard from "./pages/Dashboard";
-import POSBilling from "./pages/POSBilling";
-import Customers from "./pages/Customers";
-import Services from "./pages/Services";
-import Packages from "./pages/Packages";
-import Discounts from "./pages/Discounts";
-import Employees from "./pages/Employees";
-import Reports from "./pages/Reports";
-import SettingsPage from "./pages/SettingsPage";
-import Invoices from "./pages/Invoices";
-import Expenses from "./pages/Expenses";
-import NotFound from "./pages/NotFound";
-import { ReactNode } from "react";
+import { lazy, Suspense, ReactNode } from "react";
+
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const POSBilling = lazy(() => import("./pages/POSBilling"));
+const Customers = lazy(() => import("./pages/Customers"));
+const Services = lazy(() => import("./pages/Services"));
+const Packages = lazy(() => import("./pages/Packages"));
+const Discounts = lazy(() => import("./pages/Discounts"));
+const Employees = lazy(() => import("./pages/Employees"));
+const Reports = lazy(() => import("./pages/Reports"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const Invoices = lazy(() => import("./pages/Invoices"));
+const Expenses = lazy(() => import("./pages/Expenses"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
@@ -35,24 +36,32 @@ function ProtectedRoute({ path, children }: { path: string; children: ReactNode 
 function AppRoutes() {
   const { isAuthenticated } = useAuth();
 
-  if (!isAuthenticated) return <LoginPage />;
+  if (!isAuthenticated) {
+    return (
+      <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading...</div>}>
+        <LoginPage />
+      </Suspense>
+    );
+  }
 
   return (
     <AppLayout>
-      <Routes>
-        <Route path="/" element={<ProtectedRoute path="/"><Dashboard /></ProtectedRoute>} />
-        <Route path="/pos" element={<ProtectedRoute path="/pos"><POSBilling /></ProtectedRoute>} />
-        <Route path="/customers" element={<ProtectedRoute path="/customers"><Customers /></ProtectedRoute>} />
-        <Route path="/services" element={<ProtectedRoute path="/services"><Services /></ProtectedRoute>} />
-        <Route path="/packages" element={<ProtectedRoute path="/packages"><Packages /></ProtectedRoute>} />
-        <Route path="/discounts" element={<ProtectedRoute path="/discounts"><Discounts /></ProtectedRoute>} />
-        <Route path="/employees" element={<ProtectedRoute path="/employees"><Employees /></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute path="/reports"><Reports /></ProtectedRoute>} />
-        <Route path="/invoices" element={<ProtectedRoute path="/invoices"><Invoices /></ProtectedRoute>} />
-        <Route path="/expenses" element={<ProtectedRoute path="/expenses"><Expenses /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute path="/settings"><SettingsPage /></ProtectedRoute>} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading...</div>}>
+        <Routes>
+          <Route path="/" element={<ProtectedRoute path="/"><Dashboard /></ProtectedRoute>} />
+          <Route path="/pos" element={<ProtectedRoute path="/pos"><POSBilling /></ProtectedRoute>} />
+          <Route path="/customers" element={<ProtectedRoute path="/customers"><Customers /></ProtectedRoute>} />
+          <Route path="/services" element={<ProtectedRoute path="/services"><Services /></ProtectedRoute>} />
+          <Route path="/packages" element={<ProtectedRoute path="/packages"><Packages /></ProtectedRoute>} />
+          <Route path="/discounts" element={<ProtectedRoute path="/discounts"><Discounts /></ProtectedRoute>} />
+          <Route path="/employees" element={<ProtectedRoute path="/employees"><Employees /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute path="/reports"><Reports /></ProtectedRoute>} />
+          <Route path="/invoices" element={<ProtectedRoute path="/invoices"><Invoices /></ProtectedRoute>} />
+          <Route path="/expenses" element={<ProtectedRoute path="/expenses"><Expenses /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute path="/settings"><SettingsPage /></ProtectedRoute>} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
     </AppLayout>
   );
 }
