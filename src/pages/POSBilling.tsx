@@ -42,8 +42,6 @@ const POSBilling = () => {
     []
   );
   const [originalTransaction, setOriginalTransaction] = useState<Transaction | null>(null);
-  const [modifiedTransaction, setModifiedTransaction] = useState<Transaction | null>(null);
-  const [editDiscount, setEditDiscount] = useState<string>("");
   const [manualDiscount, setManualDiscount] = useState<string>("");
 
   useEffect(() => {
@@ -298,8 +296,6 @@ const POSBilling = () => {
 
     setTransactions((prev) => [...prev, tx]);
     setOriginalTransaction(tx);
-    setModifiedTransaction(null);
-    setEditDiscount("");
     setCheckoutComplete(true);
   };
 
@@ -310,8 +306,6 @@ const POSBilling = () => {
     setCheckoutComplete(false);
     setSearchQuery("");
     setOriginalTransaction(null);
-    setModifiedTransaction(null);
-    setEditDiscount("");
     setInvoiceNumber(`${settings.invoicePrefix}${String(Math.floor(Math.random() * 9000) + 1000)}`);
   };
 
@@ -663,12 +657,6 @@ const POSBilling = () => {
                   <p className="text-2xl font-heading font-bold text-foreground mt-3">
                     Rs. {grandTotal.toFixed(2)}
                   </p>
-                  {modifiedTransaction && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Modified copy saved as{" "}
-                      <span className="font-medium">{modifiedTransaction.invoiceNumber}</span>
-                    </p>
-                  )}
                 </div>
 
                 <div className="w-full space-y-2">
@@ -686,78 +674,6 @@ const POSBilling = () => {
                     <Download className="h-4 w-4" />
                     Download PDF
                   </button>
-                  {originalTransaction && (
-                    <div className="space-y-1 border border-dashed border-border rounded-md p-3">
-                      <p className="text-xs font-medium text-muted-foreground mb-1">
-                        Edit / modify bill (saves a separate copy)
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <label htmlFor="edit-discount" className="text-xs text-muted-foreground">
-                          Override discount
-                        </label>
-                        <input
-                          id="edit-discount"
-                          type="number"
-                          value={editDiscount}
-                          onChange={(e) => setEditDiscount(e.target.value)}
-                          placeholder={discountAmount.toFixed(2)}
-                          className="flex-1 px-2 py-1 bg-background border border-border rounded-md text-xs text-foreground"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const parsed = Number(editDiscount);
-                            if (!Number.isFinite(parsed) || parsed < 0 || !originalTransaction) return;
-                            const baseSubtotal = originalTransaction.subtotal;
-                            const manualDiscount = Math.min(baseSubtotal, parsed);
-                            const taxable = Math.max(0, baseSubtotal - manualDiscount);
-                            const manualTax = taxable * (Number.isFinite(settings.taxRate) ? settings.taxRate : 0);
-                            const total = taxable + manualTax;
-                            const now = new Date();
-                            const editedInvoiceNumber = `${settings.invoicePrefix}${String(
-                              Math.floor(Math.random() * 9000) + 1000
-                            )}`;
-
-                            const editedTx: Transaction = {
-                              ...originalTransaction,
-                              id: `t-${now.getTime()}-edit`,
-                              discount: manualDiscount,
-                              tax: manualTax,
-                              total,
-                              invoiceNumber: editedInvoiceNumber,
-                              originalInvoiceNumber: originalTransaction.invoiceNumber,
-                              isEditedCopy: true,
-                            };
-
-                            const submitEdited = async () => {
-                              try {
-                                const res = await fetch(TRANSACTIONS_API_BASE, {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify(editedTx),
-                                });
-                                if (res.ok) {
-                                  const saved = (await res.json().catch(() => null)) as Transaction | null;
-                                  if (saved?.invoiceNumber) {
-                                    setModifiedTransaction(saved);
-                                    setTransactions((prev) => [...prev, saved]);
-                                    return;
-                                  }
-                                }
-                              } catch (e) {
-                                console.error(e);
-                              }
-                            };
-
-                            void submitEdited();
-                          }}
-                          className="px-3 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border hover:bg-accent transition-colors"
-                        >
-                          Save modified bill
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
