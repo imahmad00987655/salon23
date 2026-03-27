@@ -3,12 +3,15 @@ import { DollarSign, Users, Scissors, Star } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { Transaction, Employee } from "@/types/pos";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { useAuth } from "@/contexts/AuthContext";
 
 const STATS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/stats.php";
 
 type RevenueCategory = { name: string; value: number; color?: string };
 
 const Dashboard = () => {
+  const { user } = useAuth();
+  const canViewEmployeeSales = user?.role !== "manager";
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [servicesToday, setServicesToday] = useState(0);
@@ -83,14 +86,14 @@ const Dashboard = () => {
           subtitle={`${activeServicesCount} active services`}
           icon={<Scissors className="h-5 w-5" />}
         />
-        <StatCard
-          title="Top Employee"
-          value={topEmployee ? topEmployee.name : "—"}
-          subtitle={
-            topEmployee ? `Rs. ${Number(topEmployee.revenueGenerated).toFixed(2)} generated` : "No data yet"
-          }
-          icon={<Star className="h-5 w-5" />}
-        />
+        {canViewEmployeeSales && (
+          <StatCard
+            title="Top Employee"
+            value={topEmployee ? topEmployee.name : "—"}
+            subtitle={topEmployee ? `Rs. ${Number(topEmployee.revenueGenerated).toFixed(2)} generated` : "No data yet"}
+            icon={<Star className="h-5 w-5" />}
+          />
+        )}
       </div>
 
       {/* Charts */}

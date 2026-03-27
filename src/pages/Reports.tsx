@@ -20,6 +20,7 @@ const Reports = () => {
   const [toDate, setToDate] = useState("");
   const { user } = useAuth();
   const canExport = user?.role === "super_admin" || user?.role === "manager" || user?.role === "cashier";
+  const canViewEmployeeSales = user?.role !== "manager";
   const [salesData, setSalesData] = useState<SalesPoint[]>([]);
   const [revenueCategories, setRevenueCategories] = useState<RevenueCategory[]>([]);
   const [employeePerf, setEmployeePerf] = useState<EmployeePerf[]>([]);
@@ -124,6 +125,9 @@ const Reports = () => {
             .join("")}
         </tbody>
       </table>
+      ${
+        canViewEmployeeSales
+          ? `
       <h2>Employee Performance</h2>
       <table>
         <thead><tr><th>Employee</th><th>Role</th><th class="right">Services</th><th class="right">Revenue</th><th class="right">Commission</th></tr></thead>
@@ -135,7 +139,9 @@ const Reports = () => {
             )
             .join("")}
         </tbody>
-      </table>
+      </table>`
+          : ""
+      }
     `;
     openPrintWindow(title, body);
   };
@@ -188,12 +194,14 @@ const Reports = () => {
           >
             Export Revenue CSV
           </button>
-          <button
-            onClick={exportEmployeesCsv}
-            className="px-3 py-2 rounded-md bg-secondary text-secondary-foreground text-sm font-medium border border-border hover:bg-accent transition-colors"
-          >
-            Export Employees CSV
-          </button>
+          {canViewEmployeeSales && (
+            <button
+              onClick={exportEmployeesCsv}
+              className="px-3 py-2 rounded-md bg-secondary text-secondary-foreground text-sm font-medium border border-border hover:bg-accent transition-colors"
+            >
+              Export Employees CSV
+            </button>
+          )}
           <button
             onClick={printReport}
             className="px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
@@ -247,31 +255,33 @@ const Reports = () => {
       </div>
 
       {/* Employee performance */}
-      <div className="bg-card border border-border rounded-lg p-4 sm:p-5 overflow-x-auto">
-        <h2 className="text-sm font-heading font-semibold text-card-foreground mb-4">Employee Performance</h2>
-        <table className="w-full text-sm min-w-[500px]">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left py-3 px-2 text-muted-foreground font-medium">Employee</th>
-              <th className="text-left py-3 px-2 text-muted-foreground font-medium">Role</th>
-              <th className="text-right py-3 px-2 text-muted-foreground font-medium">Services</th>
-              <th className="text-right py-3 px-2 text-muted-foreground font-medium">Revenue</th>
-              <th className="text-right py-3 px-2 text-muted-foreground font-medium">Commission</th>
-            </tr>
-          </thead>
-          <tbody>
-            {employeePerf.map((emp) => (
-              <tr key={emp.id} className="border-b border-border last:border-0">
-                <td className="py-3 px-2 font-medium text-foreground">{emp.name}</td>
-                <td className="py-3 px-2 text-muted-foreground capitalize">{emp.role.replace("_", " ")}</td>
-                <td className="py-3 px-2 text-right text-foreground">{emp.servicesPerformed}</td>
-                <td className="py-3 px-2 text-right text-foreground">Rs. {emp.revenueGenerated.toLocaleString()}</td>
-                <td className="py-3 px-2 text-right text-success font-medium">Rs. {emp.commissionEarned.toLocaleString()}</td>
+      {canViewEmployeeSales && (
+        <div className="bg-card border border-border rounded-lg p-4 sm:p-5 overflow-x-auto">
+          <h2 className="text-sm font-heading font-semibold text-card-foreground mb-4">Employee Performance</h2>
+          <table className="w-full text-sm min-w-[500px]">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-2 text-muted-foreground font-medium">Employee</th>
+                <th className="text-left py-3 px-2 text-muted-foreground font-medium">Role</th>
+                <th className="text-right py-3 px-2 text-muted-foreground font-medium">Services</th>
+                <th className="text-right py-3 px-2 text-muted-foreground font-medium">Revenue</th>
+                <th className="text-right py-3 px-2 text-muted-foreground font-medium">Commission</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {employeePerf.map((emp) => (
+                <tr key={emp.id} className="border-b border-border last:border-0">
+                  <td className="py-3 px-2 font-medium text-foreground">{emp.name}</td>
+                  <td className="py-3 px-2 text-muted-foreground capitalize">{emp.role.replace("_", " ")}</td>
+                  <td className="py-3 px-2 text-right text-foreground">{emp.servicesPerformed}</td>
+                  <td className="py-3 px-2 text-right text-foreground">Rs. {emp.revenueGenerated.toLocaleString()}</td>
+                  <td className="py-3 px-2 text-right text-success font-medium">Rs. {emp.commissionEarned.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

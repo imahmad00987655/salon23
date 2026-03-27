@@ -33,6 +33,7 @@ const POSBilling = () => {
     "salon-spark:pos-selected-categories",
     []
   );
+  const [activeCategoryFilterId, setActiveCategoryFilterId] = useState<string>("all");
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedDiscountId, setSelectedDiscountId] = useState<string>("none");
@@ -187,10 +188,21 @@ const POSBilling = () => {
 
   const selectedCategorySet = new Set(selectedCategoryIds);
 
+  useEffect(() => {
+    if (selectedCategoryIds.length === 0) {
+      setActiveCategoryFilterId("all");
+      return;
+    }
+    if (activeCategoryFilterId !== "all" && !selectedCategoryIds.includes(activeCategoryFilterId)) {
+      setActiveCategoryFilterId("all");
+    }
+  }, [selectedCategoryIds, activeCategoryFilterId]);
+
   const filteredServices = services.filter((s) => {
     const matchesCategory = selectedCategorySet.has(s.categoryId);
+    const matchesActiveCategory = activeCategoryFilterId === "all" || s.categoryId === activeCategoryFilterId;
     const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch && s.active;
+    return matchesCategory && matchesActiveCategory && matchesSearch && s.active;
   });
 
   const addToCart = (serviceId: string) => {
@@ -464,24 +476,37 @@ const POSBilling = () => {
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
-              {selectedCategoryIds.length === allCategoryIds.length ? (
-                <span className="px-3 py-1.5 rounded-md text-sm font-medium bg-primary text-primary-foreground inline-flex items-center justify-center gap-1.5 text-center">
-                  <Check className="h-3.5 w-3.5" />
-                  All categories
-                </span>
-              ) : (
-                serviceCategoriesState
-                  .filter((cat) => selectedCategorySet.has(cat.id))
-                  .map((cat) => (
-                    <span
-                      key={cat.id}
-                      className="px-3 py-1.5 rounded-md text-sm font-medium bg-primary text-primary-foreground text-center"
-                    >
-                      {cat.name}
-                    </span>
-                  ))
-              )}
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setActiveCategoryFilterId("all")}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center justify-center gap-1.5 text-center border transition-colors",
+                  activeCategoryFilterId === "all"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card text-foreground border-border hover:bg-accent"
+                )}
+              >
+                <Check className="h-3.5 w-3.5" />
+                All selected
+              </button>
+              {serviceCategoriesState
+                .filter((cat) => selectedCategorySet.has(cat.id))
+                .map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setActiveCategoryFilterId(cat.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-sm font-medium text-center border transition-colors",
+                      activeCategoryFilterId === cat.id
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-foreground border-border hover:bg-accent"
+                    )}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
             </div>
           </div>
         </div>

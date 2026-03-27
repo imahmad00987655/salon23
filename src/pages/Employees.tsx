@@ -20,6 +20,7 @@ const Employees = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const canViewEmployeeSales = user?.role !== "manager";
   const [roleOptions, setRoleOptions] = useState<string[]>([
     "stylist",
     "nail_tech",
@@ -255,21 +256,23 @@ const Employees = () => {
                 {emp.active ? "Active" : "Inactive"}
               </span>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="text-lg font-heading font-bold text-foreground">{emp.servicesPerformed}</p>
-                <p className="text-xs text-muted-foreground">Services</p>
+            {canViewEmployeeSales && (
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-lg font-heading font-bold text-foreground">{emp.servicesPerformed}</p>
+                  <p className="text-xs text-muted-foreground">Services</p>
+                </div>
+                <div>
+                  <p className="text-lg font-heading font-bold text-foreground">Rs. {emp.revenueGenerated.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">Revenue</p>
+                </div>
+                <div>
+                  <p className="text-lg font-heading font-bold text-foreground">Rs. {getCommissionEarned(emp).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">Commission Earned</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{emp.commissionRate}% rate</p>
+                </div>
               </div>
-              <div>
-                <p className="text-lg font-heading font-bold text-foreground">Rs. {emp.revenueGenerated.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Revenue</p>
-              </div>
-              <div>
-                <p className="text-lg font-heading font-bold text-foreground">Rs. {getCommissionEarned(emp).toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Commission Earned</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{emp.commissionRate}% rate</p>
-              </div>
-            </div>
+            )}
           </div>
         ))}
       </div>
