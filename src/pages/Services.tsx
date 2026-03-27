@@ -3,11 +3,10 @@ import { Service, ServiceCategory } from "@/types/pos";
 import { Plus, Search, X, Clock, ImagePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const SERVICES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/services.php";
-const CATEGORIES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/categories.php";
-const UPLOADS_BASE = import.meta.env.DEV
-  ? "http://localhost/salon-spark-main"
-  : "https://saddlebrown-antelope-612005.hostingersite.com";
+const PROD_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com";
+const SERVICES_API_BASE = import.meta.env.DEV ? "/api/services.php" : `${PROD_API_BASE}/services.php`;
+const CATEGORIES_API_BASE = import.meta.env.DEV ? "/api/categories.php" : `${PROD_API_BASE}/categories.php`;
+const UPLOADS_BASE = PROD_API_BASE;
 
 const Services = () => {
   const NO_CATEGORY_ID = "none";
@@ -79,7 +78,7 @@ const Services = () => {
         const imageUrl = row.image_url
           ? String(row.image_url).startsWith("http")
             ? String(row.image_url)
-            : `${UPLOADS_BASE}/${String(row.image_url).replace(/^\//, "")}`
+            : `${UPLOADS_BASE}/${String(row.image_url).replace(/^\/+/, "")}`
           : undefined;
 
         return {
@@ -183,8 +182,13 @@ const Services = () => {
           formData.append("duration", String(duration));
           formData.append("active", active ? "1" : "0");
           if (serviceImageFile) formData.append("image", serviceImageFile);
+          // PHP does not reliably parse multipart/form-data for real PUT requests.
+          // For edit + image upload, send POST with method override.
+          if (isEdit) {
+            formData.append("_method", "PUT");
+          }
           res = await fetch(url, {
-            method: isEdit ? "PUT" : "POST",
+            method: "POST",
             body: formData,
           });
         } else {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Service, ServiceCategory, Customer, Employee, Package, Discount, CartItem, Transaction } from "@/types/pos";
 import { cn } from "@/lib/utils";
-import { X, Minus, Plus, Search, CreditCard, Banknote, Globe, FileText, Printer, Download } from "lucide-react";
+import { X, Minus, Plus, Search, CreditCard, Banknote, Globe, FileText, Printer, Download, ChevronDown, Check } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CustomerSearch } from "@/components/CustomerSearch";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -10,12 +10,14 @@ import { DEFAULT_DISCOUNTS, DISCOUNTS_STORAGE_KEY } from "@/lib/discounts";
 import { openPrintWindow, buildProfessionalInvoiceHtml } from "@/lib/exporting";
 import { useAuth } from "@/contexts/AuthContext";
 
-const TRANSACTIONS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/transactions.php";
-const SERVICES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/services.php";
-const CUSTOMERS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/customers.php";
-const EMPLOYEES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/employees.php";
-const PACKAGES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/packages.php";
-const DISCOUNTS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/discounts.php";
+const PROD_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com";
+const TRANSACTIONS_API_BASE = import.meta.env.DEV ? "/api/transactions.php" : `${PROD_API_BASE}/transactions.php`;
+const SERVICES_API_BASE = import.meta.env.DEV ? "/api/services.php" : `${PROD_API_BASE}/services.php`;
+const CUSTOMERS_API_BASE = import.meta.env.DEV ? "/api/customers.php" : `${PROD_API_BASE}/customers.php`;
+const EMPLOYEES_API_BASE = import.meta.env.DEV ? "/api/employees.php" : `${PROD_API_BASE}/employees.php`;
+const PACKAGES_API_BASE = import.meta.env.DEV ? "/api/packages.php" : `${PROD_API_BASE}/packages.php`;
+const DISCOUNTS_API_BASE = import.meta.env.DEV ? "/api/discounts.php" : `${PROD_API_BASE}/discounts.php`;
+const SERVICE_IMAGE_BASE = PROD_API_BASE;
 
 const POSBilling = () => {
   const { user } = useAuth();
@@ -26,7 +28,11 @@ const POSBilling = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [discounts, setDiscounts] = useState<Discount[]>(DEFAULT_DISCOUNTS);
 
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedCategoryIds, setSelectedCategoryIds] = useLocalStorageState<string[]>(
+    "salon-spark:pos-selected-categories",
+    []
+  );
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedDiscountId, setSelectedDiscountId] = useState<string>("none");
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,6 +70,11 @@ const POSBilling = () => {
             if (row.category_name) {
               catMap.set(catId, String(row.category_name));
             }
+            const imageUrl = row.image_url
+              ? String(row.image_url).startsWith("http")
+                ? String(row.image_url)
+                : `${SERVICE_IMAGE_BASE}/${String(row.image_url).replace(/^\/+/, "")}`
+              : undefined;
             return {
               id: String(row.id),
               name: String(row.name),
@@ -71,6 +82,7 @@ const POSBilling = () => {
               price: Number(row.price),
               duration: Number(row.duration),
               active: Boolean(row.active),
+              image: imageUrl,
             };
           });
           setServices(mappedServices);
@@ -159,8 +171,23 @@ const POSBilling = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const allCategoryIds = serviceCategoriesState.map((cat) => cat.id);
+
+  useEffect(() => {
+    if (!allCategoryIds.length) return;
+    setSelectedCategoryIds((prev) => {
+      const clean = (prev ?? []).filter((id) => allCategoryIds.includes(id));
+      const missing = allCategoryIds.filter((id) => !clean.includes(id));
+      if (clean.length === 0) return allCategoryIds;
+      if (missing.length === 0 && clean.length === prev.length) return prev;
+      return [...clean, ...missing];
+    });
+  }, [allCategoryIds.join("|"), setSelectedCategoryIds]);
+
+  const selectedCategorySet = new Set(selectedCategoryIds);
+
   const filteredServices = services.filter((s) => {
-    const matchesCategory = selectedCategory === "all" || s.categoryId === selectedCategory;
+    const matchesCategory = selectedCategoryIds.length === 0 || selectedCategorySet.has(s.categoryId);
     const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch && s.active;
   });
@@ -392,33 +419,69 @@ const POSBilling = () => {
             />
           </div>
 
-          {/* Category tabs */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 scrollbar-thin">
-            <button
-              onClick={() => setSelectedCategory("all")}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors",
-                selectedCategory === "all"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-muted-foreground hover:text-foreground"
-              )}
-            >
-              All
-            </button>
-            {serviceCategoriesState.map((cat) => (
+          {/* Category selector */}
+          <div className="space-y-2">
+            <div className="relative">
               <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={cn(
-                  "px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors",
-                  selectedCategory === cat.id
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground hover:text-foreground"
-                )}
+                type="button"
+                onClick={() => setShowCategoryDropdown((prev) => !prev)}
+                className="w-full sm:w-auto inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-secondary text-foreground border border-border hover:bg-accent transition-colors"
               >
-                {cat.name}
+                Categories
+                <ChevronDown className="h-4 w-4" />
               </button>
-            ))}
+              {showCategoryDropdown && (
+                <div className="absolute z-20 mt-2 w-full sm:w-72 rounded-md border border-border bg-card shadow-lg p-2 space-y-1 max-h-64 overflow-y-auto">
+                  <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                    <input
+                      type="checkbox"
+                      checked={allCategoryIds.length > 0 && selectedCategoryIds.length === allCategoryIds.length}
+                      onChange={(e) => {
+                        setSelectedCategoryIds(e.target.checked ? allCategoryIds : []);
+                      }}
+                    />
+                    <span>All categories</span>
+                  </label>
+                  {serviceCategoriesState.map((cat) => (
+                    <label
+                      key={cat.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCategorySet.has(cat.id)}
+                        onChange={(e) => {
+                          setSelectedCategoryIds((prev) => {
+                            if (e.target.checked) return Array.from(new Set([...prev, cat.id]));
+                            return prev.filter((id) => id !== cat.id);
+                          });
+                        }}
+                      />
+                      <span>{cat.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 scrollbar-thin">
+              {selectedCategoryIds.length === allCategoryIds.length ? (
+                <span className="px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap bg-primary text-primary-foreground inline-flex items-center gap-1.5">
+                  <Check className="h-3.5 w-3.5" />
+                  All categories
+                </span>
+              ) : (
+                serviceCategoriesState
+                  .filter((cat) => selectedCategorySet.has(cat.id))
+                  .map((cat) => (
+                    <span
+                      key={cat.id}
+                      className="px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap bg-primary text-primary-foreground"
+                    >
+                      {cat.name}
+                    </span>
+                  ))
+              )}
+            </div>
           </div>
         </div>
 

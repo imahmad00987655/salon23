@@ -10,6 +10,8 @@ type Period = "daily" | "weekly" | "monthly" | "yearly";
 type SalesPoint = { label: string; revenue: number };
 type RevenueCategory = { name: string; value: number };
 type EmployeePerf = Pick<Employee, "id" | "name" | "role" | "servicesPerformed" | "revenueGenerated" | "commissionEarned">;
+const PROD_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com";
+const REPORTS_API_BASE = import.meta.env.DEV ? "/api/reports.php" : `${PROD_API_BASE}/reports.php`;
 
 const Reports = () => {
   const [period, setPeriod] = useState<Period>("weekly");
@@ -28,9 +30,7 @@ const Reports = () => {
         const params = new URLSearchParams();
         if (fromDate) params.append("from", fromDate);
         if (toDate) params.append("to", toDate);
-        const res = await fetch(
-          `https://saddlebrown-antelope-612005.hostingersite.com/reports.php${params.toString() ? `?${params.toString()}` : ""}`
-        );
+        const res = await fetch(`${REPORTS_API_BASE}${params.toString() ? `?${params.toString()}` : ""}`);
         if (!res.ok) return;
         const data = await res.json();
 

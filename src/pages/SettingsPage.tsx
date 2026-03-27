@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Moon, Sun, Save, Eye, EyeOff, Shield, Key, Search } from "lucide-react";
+import { Moon, Sun, Save, Eye, EyeOff, Shield, Key, Search, Pencil, Trash2, Power } from "lucide-react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "@/lib/appSettings";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ const UPDATE_USER_PASSWORD_API = import.meta.env.DEV
   ? "/api/update_user_password.php"
   : `${PROD_API_BASE}/update_user_password.php`;
 
-type ListUser = { id: number; name: string; email: string; role: string };
+type ListUser = { id: number; name: string; email: string; role: string; active: boolean };
 
 const SettingsPage = () => {
   const { user, setUserFromSettings } = useAuth();
@@ -50,36 +50,42 @@ const SettingsPage = () => {
   const [createUserLoading, setCreateUserLoading] = useState(false);
   const [userSearch, setUserSearch] = useState("");
   const [activeSection, setActiveSection] = useState<"profile" | "users" | "passwords" | "billing">("profile");
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [editingUserName, setEditingUserName] = useState("");
+  const [editingUserEmail, setEditingUserEmail] = useState("");
+  const [editingUserRole, setEditingUserRole] = useState<"super_admin" | "admin" | "manager" | "cashier">("cashier");
+  const [editingUserActive, setEditingUserActive] = useState(true);
 
   const canUpdateCredentials = user?.role === "super_admin" || user?.role === "admin";
   const isSuperAdmin = user?.role === "super_admin";
 
-  useEffect(() => {
+  const loadUsers = useCallback(async () => {
     if (!isSuperAdmin || !user) return;
-    const load = async () => {
-      setUsersLoading(true);
-      setUsersError(null);
-      try {
-        const res = await fetch(USERS_API, {
-          headers: { "X-User-Role": user.role },
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          setUsersError((err?.error as string) || `Failed to load users (${res.status}).`);
-          setUsers([]);
-          return;
-        }
-        const data = (await res.json()) as ListUser[];
-        setUsers(data);
-        if (data.length && !passwordTargetId) setPasswordTargetId(String(data[0].id));
-      } catch {
-        setUsersError("Network error while loading users.");
+    setUsersLoading(true);
+    setUsersError(null);
+    try {
+      const res = await fetch(USERS_API, {
+        headers: { "X-User-Role": user.role },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setUsersError((err?.error as string) || `Failed to load users (${res.status}).`);
         setUsers([]);
-      } finally {
-        setUsersLoading(false);
+        return;
       }
-    };
-    load();
+      const data = (await res.json()) as ListUser[];
+      setUsers(data);
+      if (data.length && !passwordTargetId) setPasswordTargetId(String(data[0].id));
+    } catch {
+      setUsersError("Network error while loading users.");
+      setUsers([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [isSuperAdmin, user, passwordTargetId]);
+
+  useEffect(() => {
+    void loadUsers();
   }, [isSuperAdmin, user]);
 
   const selectedTargetUser = users.find((u) => String(u.id) === passwordTargetId);
@@ -230,17 +236,118 @@ const SettingsPage = () => {
       setNewUserEmail("");
       setNewUserPassword("");
       // Refresh users list so new user appears in dropdown
-      if (isSuperAdmin) {
-        try {
-          const reload = await fetch(USERS_API, { headers: { "X-User-Role": user.role } });
-          if (reload.ok) {
-            const fresh = (await reload.json()) as ListUser[];
-            setUsers(fresh);
-          }
-        } catch {
-          // ignore reload errors
-        }
+      await loadUsers();
+    } catch {
+      setCreateUserMessage({ type: "error", text: "Network error. Please try again." });
+    } finally {
+      setCreateUserLoading(false);
+    }
+  };
+
+  const beginEditUser = (target: ListUser) => {
+    setEditingUserId(target.id);
+    setEditingUserName(target.name);
+    setEditingUserEmail(target.email);
+    setEditingUserRole(target.role as "super_admin" | "admin" | "manager" | "cashier");
+    setEditingUserActive(Boolean(target.active));
+    setCreateUserMessage(null);
+  };
+
+  const handleUpdateUser = async (targetId: number) => {
+    if (!user || !isSuperAdmin) return;
+    if (!editingUserName.trim() || !editingUserEmail.trim()) {
+      setCreateUserMessage({ type: "error", text: "Name and email are required." });
+      return;
+    }
+    setCreateUserLoading(true);
+    setCreateUserMessage(null);
+    try {
+      const res = await fetch(`${USERS_API}?id=${targetId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Id": String(user.id),
+          "X-User-Role": user.role,
+        },
+        body: JSON.stringify({
+          name: editingUserName.trim(),
+          email: editingUserEmail.trim(),
+          role: editingUserRole,
+          active: editingUserActive,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCreateUserMessage({ type: "error", text: (data.error as string) || "Failed to update user." });
+        return;
       }
+      setCreateUserMessage({ type: "success", text: "User updated successfully." });
+      setEditingUserId(null);
+      await loadUsers();
+    } catch {
+      setCreateUserMessage({ type: "error", text: "Network error. Please try again." });
+    } finally {
+      setCreateUserLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (target: ListUser) => {
+    if (!user || !isSuperAdmin) return;
+    const ok = window.confirm(`Delete user "${target.name}"? This cannot be undone.`);
+    if (!ok) return;
+    setCreateUserLoading(true);
+    setCreateUserMessage(null);
+    try {
+      const res = await fetch(`${USERS_API}?id=${target.id}`, {
+        method: "DELETE",
+        headers: {
+          "X-User-Id": String(user.id),
+          "X-User-Role": user.role,
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCreateUserMessage({ type: "error", text: (data.error as string) || "Failed to delete user." });
+        return;
+      }
+      setCreateUserMessage({ type: "success", text: "User removed successfully." });
+      await loadUsers();
+    } catch {
+      setCreateUserMessage({ type: "error", text: "Network error. Please try again." });
+    } finally {
+      setCreateUserLoading(false);
+    }
+  };
+
+  const handleToggleUserActive = async (target: ListUser) => {
+    if (!user || !isSuperAdmin) return;
+    setCreateUserLoading(true);
+    setCreateUserMessage(null);
+    try {
+      const res = await fetch(`${USERS_API}?id=${target.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Id": String(user.id),
+          "X-User-Role": user.role,
+        },
+        body: JSON.stringify({
+          name: target.name,
+          email: target.email,
+          role: target.role,
+          active: !target.active,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCreateUserMessage({ type: "error", text: (data.error as string) || "Failed to change user status." });
+        return;
+      }
+      setCreateUserMessage({
+        type: "success",
+        text: !target.active ? "User reactivated successfully." : "User marked inactive successfully.",
+      });
+      await loadUsers();
     } catch {
       setCreateUserMessage({ type: "error", text: "Network error. Please try again." });
     } finally {
@@ -531,6 +638,133 @@ const SettingsPage = () => {
                 {createUserLoading ? "Creating…" : "Create user"}
               </button>
             </form>
+            <div className="space-y-3 border border-border rounded-lg p-4 bg-background">
+              <h3 className="text-xs font-semibold text-card-foreground">Manage existing users</h3>
+              {usersLoading ? (
+                <div className="text-xs text-muted-foreground">Loading users...</div>
+              ) : users.length === 0 ? (
+                <div className="text-xs text-muted-foreground">No users found.</div>
+              ) : (
+                <div className="space-y-2">
+                  {users.map((u) => {
+                    const isEditing = editingUserId === u.id;
+                    return (
+                      <div key={u.id} className="border border-border rounded-md p-3 space-y-2">
+                        {!isEditing ? (
+                          <>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{u.name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] px-2 py-0.5 rounded border border-border text-muted-foreground capitalize">
+                                  {u.role.replace("_", " ")}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "text-[11px] px-2 py-0.5 rounded border",
+                                    u.active
+                                      ? "border-success/30 text-success bg-success/10"
+                                      : "border-destructive/30 text-destructive bg-destructive/10"
+                                  )}
+                                >
+                                  {u.active ? "Active" : "Inactive"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => beginEditUser(u)}
+                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border text-xs hover:bg-accent"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleUserActive(u)}
+                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border text-xs hover:bg-accent"
+                              >
+                                <Power className="h-3.5 w-3.5" />
+                                {u.active ? "Mark inactive" : "Mark active"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(u)}
+                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-destructive/50 text-destructive text-xs hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Remove
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                value={editingUserName}
+                                onChange={(e) => setEditingUserName(e.target.value)}
+                                className="w-full px-2 py-1.5 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                              />
+                              <input
+                                type="email"
+                                value={editingUserEmail}
+                                onChange={(e) => setEditingUserEmail(e.target.value)}
+                                className="w-full px-2 py-1.5 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                              />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <select
+                                value={editingUserRole}
+                                onChange={(e) =>
+                                  setEditingUserRole(
+                                    e.target.value as "super_admin" | "admin" | "manager" | "cashier"
+                                  )
+                                }
+                                className="w-full px-2 py-1.5 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                              >
+                                {(["super_admin", "admin", "manager", "cashier"] as const).map((r) => (
+                                  <option key={r} value={r}>
+                                    {r.replace("_", " ")}
+                                  </option>
+                                ))}
+                              </select>
+                              <label className="inline-flex items-center gap-2 text-xs text-foreground px-1">
+                                <input
+                                  type="checkbox"
+                                  checked={editingUserActive}
+                                  onChange={(e) => setEditingUserActive(e.target.checked)}
+                                />
+                                Active user
+                              </label>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateUser(u.id)}
+                                className="px-3 py-1.5 text-xs rounded bg-primary text-primary-foreground hover:opacity-90"
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingUserId(null)}
+                                className="px-3 py-1.5 text-xs rounded bg-secondary text-secondary-foreground"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </section>
         )}
 

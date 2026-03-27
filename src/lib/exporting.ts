@@ -558,10 +558,16 @@ export function buildProfessionalInvoiceHtml(options: ProfessionalInvoiceOptions
             <td class="totals-label">Subtotal</td>
             <td class="totals-value">${formatPKR(subtotal)}</td>
           </tr>
-          <tr>
-            <td class="totals-label">Discount</td>
-            <td class="totals-value">- ${formatPKR(discount)}</td>
-          </tr>
+          ${
+            Number(discount) > 0
+              ? `
+                <tr>
+                  <td class="totals-label">Discount</td>
+                  <td class="totals-value">- ${formatPKR(discount)}</td>
+                </tr>
+              `
+              : ""
+          }
           <tr>
             <td class="totals-label">Tax</td>
             <td class="totals-value">${formatPKR(tax)}</td>
