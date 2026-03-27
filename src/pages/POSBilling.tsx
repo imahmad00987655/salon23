@@ -188,7 +188,7 @@ const POSBilling = () => {
   const selectedCategorySet = new Set(selectedCategoryIds);
 
   const filteredServices = services.filter((s) => {
-    const matchesCategory = selectedCategoryIds.length === 0 || selectedCategorySet.has(s.categoryId);
+    const matchesCategory = selectedCategorySet.has(s.categoryId);
     const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch && s.active;
   });
