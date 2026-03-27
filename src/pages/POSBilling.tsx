@@ -464,9 +464,9 @@ const POSBilling = () => {
                 </div>
               )}
             </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 scrollbar-thin">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
               {selectedCategoryIds.length === allCategoryIds.length ? (
-                <span className="px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap bg-primary text-primary-foreground inline-flex items-center gap-1.5">
+                <span className="px-3 py-1.5 rounded-md text-sm font-medium bg-primary text-primary-foreground inline-flex items-center justify-center gap-1.5 text-center">
                   <Check className="h-3.5 w-3.5" />
                   All categories
                 </span>
@@ -476,7 +476,7 @@ const POSBilling = () => {
                   .map((cat) => (
                     <span
                       key={cat.id}
-                      className="px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap bg-primary text-primary-foreground"
+                      className="px-3 py-1.5 rounded-md text-sm font-medium bg-primary text-primary-foreground text-center"
                     >
                       {cat.name}
                     </span>
