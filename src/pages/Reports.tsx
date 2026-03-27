@@ -20,7 +20,7 @@ const Reports = () => {
   const [toDate, setToDate] = useState("");
   const { user } = useAuth();
   const canExport = user?.role === "super_admin" || user?.role === "manager" || user?.role === "cashier";
-  const canViewEmployeeSales = user?.role !== "manager";
+  const canViewEmployeeSales = user?.role === "super_admin" || user?.role === "admin";
   const [salesData, setSalesData] = useState<SalesPoint[]>([]);
   const [revenueCategories, setRevenueCategories] = useState<RevenueCategory[]>([]);
   const [employeePerf, setEmployeePerf] = useState<EmployeePerf[]>([]);
