@@ -11,12 +11,13 @@ import { openPrintWindow, buildProfessionalInvoiceHtml } from "@/lib/exporting";
 import { useAuth } from "@/contexts/AuthContext";
 
 const PROD_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com";
-const TRANSACTIONS_API_BASE = import.meta.env.DEV ? "/api/transactions.php" : `${PROD_API_BASE}/transactions.php`;
-const SERVICES_API_BASE = import.meta.env.DEV ? "/api/services.php" : `${PROD_API_BASE}/services.php`;
-const CUSTOMERS_API_BASE = import.meta.env.DEV ? "/api/customers.php" : `${PROD_API_BASE}/customers.php`;
-const EMPLOYEES_API_BASE = import.meta.env.DEV ? "/api/employees.php" : `${PROD_API_BASE}/employees.php`;
-const PACKAGES_API_BASE = import.meta.env.DEV ? "/api/packages.php" : `${PROD_API_BASE}/packages.php`;
-const DISCOUNTS_API_BASE = import.meta.env.DEV ? "/api/discounts.php" : `${PROD_API_BASE}/discounts.php`;
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "") || PROD_API_BASE;
+const TRANSACTIONS_API_BASE = `${API_BASE}/transactions.php`;
+const SERVICES_API_BASE = `${API_BASE}/services.php`;
+const CUSTOMERS_API_BASE = `${API_BASE}/customers.php`;
+const EMPLOYEES_API_BASE = `${API_BASE}/employees.php`;
+const PACKAGES_API_BASE = `${API_BASE}/packages.php`;
+const DISCOUNTS_API_BASE = `${API_BASE}/discounts.php`;
 const SERVICE_IMAGE_BASE = PROD_API_BASE;
 
 const POSBilling = () => {

@@ -5,8 +5,9 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 const PROD_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com";
-const EMPLOYEES_API_BASE = import.meta.env.DEV ? "/api/employees.php" : `${PROD_API_BASE}/employees.php`;
-const TRANSACTIONS_API_BASE = import.meta.env.DEV ? "/api/transactions.php" : `${PROD_API_BASE}/transactions.php`;
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "") || PROD_API_BASE;
+const EMPLOYEES_API_BASE = `${API_BASE}/employees.php`;
+const TRANSACTIONS_API_BASE = `${API_BASE}/transactions.php`;
 
 const Employees = () => {
   const [employeeList, setEmployeeList] = useState<Employee[]>([]);
@@ -107,6 +108,15 @@ const Employees = () => {
     if (!employeesWithActivityByDate) return true;
     return employeesWithActivityByDate.has(e.id);
   });
+
+  const getCommissionEarned = (emp: Employee) => {
+    const fromApi = Number(emp.commissionEarned ?? 0);
+    if (Number.isFinite(fromApi) && fromApi > 0) return fromApi;
+    const revenue = Number(emp.revenueGenerated ?? 0);
+    const rate = Number(emp.commissionRate ?? 0);
+    const computed = (revenue * rate) / 100;
+    return Number.isFinite(computed) ? computed : 0;
+  };
 
   const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -255,8 +265,9 @@ const Employees = () => {
                 <p className="text-xs text-muted-foreground">Revenue</p>
               </div>
               <div>
-                <p className="text-lg font-heading font-bold text-foreground">{emp.commissionRate}%</p>
-                <p className="text-xs text-muted-foreground">Commission</p>
+                <p className="text-lg font-heading font-bold text-foreground">Rs. {getCommissionEarned(emp).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Commission Earned</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{emp.commissionRate}% rate</p>
               </div>
             </div>
           </div>

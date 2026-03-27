@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Service, ServiceCategory } from "@/types/pos";
-import { Plus, Search, X, Clock, ImagePlus } from "lucide-react";
+import { Plus, Search, X, Clock, ImagePlus, ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 
 const PROD_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com";
-const SERVICES_API_BASE = import.meta.env.DEV ? "/api/services.php" : `${PROD_API_BASE}/services.php`;
-const CATEGORIES_API_BASE = import.meta.env.DEV ? "/api/categories.php" : `${PROD_API_BASE}/categories.php`;
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "") || PROD_API_BASE;
+const SERVICES_API_BASE = `${API_BASE}/services.php`;
+const CATEGORIES_API_BASE = `${API_BASE}/categories.php`;
 const UPLOADS_BASE = PROD_API_BASE;
 
 const Services = () => {
@@ -13,7 +15,11 @@ const Services = () => {
   const [serviceList, setServiceList] = useState<Service[]>([]);
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [search, setSearch] = useState("");
-  const [filterCat, setFilterCat] = useState("all");
+  const [selectedCategoryIds, setSelectedCategoryIds] = useLocalStorageState<string[]>(
+    "salon-spark:services-selected-categories",
+    []
+  );
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
   const [loading, setLoading] = useState(false);
@@ -140,8 +146,23 @@ const Services = () => {
     }
   };
 
+  const allCategoryIds = serviceCategories.map((cat) => cat.id);
+
+  useEffect(() => {
+    if (!allCategoryIds.length) return;
+    setSelectedCategoryIds((prev) => {
+      const clean = (prev ?? []).filter((id) => allCategoryIds.includes(id));
+      const missing = allCategoryIds.filter((id) => !clean.includes(id));
+      if (clean.length === 0) return allCategoryIds;
+      if (missing.length === 0 && clean.length === prev.length) return prev;
+      return [...clean, ...missing];
+    });
+  }, [allCategoryIds.join("|"), setSelectedCategoryIds]);
+
+  const selectedCategorySet = new Set(selectedCategoryIds);
+
   const filtered = serviceList.filter((s) => {
-    const matchCat = filterCat === "all" || s.categoryId === filterCat;
+    const matchCat = selectedCategoryIds.length === 0 || selectedCategorySet.has(s.categoryId);
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
@@ -153,7 +174,7 @@ const Services = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, filterCat, serviceList.length]);
+  }, [search, selectedCategoryIds.join("|"), serviceList.length]);
 
   const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -285,14 +306,68 @@ const Services = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input id="service-search" type="text" placeholder="Search services..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-card text-foreground text-sm rounded-md border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground" />
         </div>
-        <div className="flex gap-1.5">
-          <button onClick={() => setFilterCat("all")} className={cn("px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5", filterCat === "all" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground")}>All</button>
-          {serviceCategories.map((cat) => (
-            <button key={cat.id} onClick={() => setFilterCat(cat.id)} className={cn("px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5", filterCat === cat.id ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground")}>
-              {cat.name}
-            </button>
-          ))}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowCategoryDropdown((prev) => !prev)}
+            className="w-full sm:w-auto inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-secondary text-foreground border border-border hover:bg-accent transition-colors"
+          >
+            Categories
+            <ChevronDown className="h-4 w-4" />
+          </button>
+          {showCategoryDropdown && (
+            <div className="absolute z-20 mt-2 w-full sm:w-72 rounded-md border border-border bg-card shadow-lg p-2 space-y-1 max-h-64 overflow-y-auto">
+              <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={allCategoryIds.length > 0 && selectedCategoryIds.length === allCategoryIds.length}
+                  onChange={(e) => {
+                    setSelectedCategoryIds(e.target.checked ? allCategoryIds : []);
+                  }}
+                />
+                <span>All categories</span>
+              </label>
+              {serviceCategories.map((cat) => (
+                <label
+                  key={cat.id}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedCategorySet.has(cat.id)}
+                    onChange={(e) => {
+                      setSelectedCategoryIds((prev) => {
+                        if (e.target.checked) return Array.from(new Set([...prev, cat.id]));
+                        return prev.filter((id) => id !== cat.id);
+                      });
+                    }}
+                  />
+                  <span>{cat.name}</span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
+      </div>
+
+      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 scrollbar-thin">
+        {selectedCategoryIds.length === allCategoryIds.length ? (
+          <span className="px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap bg-primary text-primary-foreground inline-flex items-center gap-1.5">
+            <Check className="h-3.5 w-3.5" />
+            All categories
+          </span>
+        ) : (
+          serviceCategories
+            .filter((cat) => selectedCategorySet.has(cat.id))
+            .map((cat) => (
+              <span
+                key={cat.id}
+                className="px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap bg-primary text-primary-foreground"
+              >
+                {cat.name}
+              </span>
+            ))
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">

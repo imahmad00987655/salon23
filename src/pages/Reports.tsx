@@ -11,7 +11,8 @@ type SalesPoint = { label: string; revenue: number };
 type RevenueCategory = { name: string; value: number };
 type EmployeePerf = Pick<Employee, "id" | "name" | "role" | "servicesPerformed" | "revenueGenerated" | "commissionEarned">;
 const PROD_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com";
-const REPORTS_API_BASE = import.meta.env.DEV ? "/api/reports.php" : `${PROD_API_BASE}/reports.php`;
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "") || PROD_API_BASE;
+const REPORTS_API_BASE = `${API_BASE}/reports.php`;
 
 const Reports = () => {
   const [period, setPeriod] = useState<Period>("weekly");
