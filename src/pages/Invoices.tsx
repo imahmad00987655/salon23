@@ -60,6 +60,8 @@ const Invoices = () => {
       discount: Number(inv.discount ?? 0),
       tax: Number(inv.tax ?? 0),
       total: Number(inv.total ?? 0),
+      paidAmount: Number(inv.paidAmount ?? inv.total ?? 0),
+      balanceAmount: Number(inv.remainingBalance ?? 0),
     });
   };
 
@@ -122,6 +124,9 @@ const Invoices = () => {
           discount: updated.discount,
           tax: updated.tax,
           total: updated.total,
+          paidAmount: updated.paidAmount,
+          remainingBalance: updated.remainingBalance,
+          paymentStatus: updated.paymentStatus,
           paymentMethod: updated.paymentMethod,
           date: updated.date,
           invoiceNumber: updated.invoiceNumber,
@@ -233,6 +238,8 @@ const Invoices = () => {
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Customer</th>
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Items</th>
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Payment</th>
+              <th className="text-right py-3 px-4 text-muted-foreground font-medium">Paid</th>
+              <th className="text-right py-3 px-4 text-muted-foreground font-medium">Remaining</th>
               <th className="text-right py-3 px-4 text-muted-foreground font-medium">Total</th>
               <th className="text-center py-3 px-4 text-muted-foreground font-medium">Actions</th>
             </tr>
@@ -254,6 +261,8 @@ const Invoices = () => {
                     {t.paymentMethod}
                   </span>
                 </td>
+                <td className="py-3 px-4 text-right text-foreground">Rs. {Number(t.paidAmount ?? t.total ?? 0).toFixed(2)}</td>
+                <td className="py-3 px-4 text-right text-destructive">Rs. {Number(t.remainingBalance ?? 0).toFixed(2)}</td>
                 <td className="py-3 px-4 text-right font-heading font-bold text-foreground">Rs. {Number(t.total ?? 0).toFixed(2)}</td>
                 <td className="py-3 px-4">
                   <div className="flex items-center justify-center gap-1 flex-wrap">
@@ -302,7 +311,7 @@ const Invoices = () => {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-muted-foreground">No invoices found</td>
+                <td colSpan={9} className="py-12 text-center text-muted-foreground">No invoices found</td>
               </tr>
             )}
           </tbody>

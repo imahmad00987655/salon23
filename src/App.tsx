@@ -20,6 +20,7 @@ const Reports = lazy(() => import("./pages/Reports"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const Invoices = lazy(() => import("./pages/Invoices"));
 const Expenses = lazy(() => import("./pages/Expenses"));
+const CustomerBalances = lazy(() => import("./pages/CustomerBalances"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -58,6 +59,7 @@ function AppRoutes() {
           <Route path="/reports" element={<ProtectedRoute path="/reports"><Reports /></ProtectedRoute>} />
           <Route path="/invoices" element={<ProtectedRoute path="/invoices"><Invoices /></ProtectedRoute>} />
           <Route path="/expenses" element={<ProtectedRoute path="/expenses"><Expenses /></ProtectedRoute>} />
+          <Route path="/customer-balances" element={<ProtectedRoute path="/customer-balances"><CustomerBalances /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute path="/settings"><SettingsPage /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>

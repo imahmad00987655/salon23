@@ -45,6 +45,7 @@ export interface CartItem {
   quantity: number;
   employeeId: string;
   employeeName: string;
+  assignedEmployees?: Array<{ id: string; name: string }>;
 }
 
 export interface Transaction {
@@ -59,6 +60,10 @@ export interface Transaction {
   paymentMethod: "cash" | "card" | "online";
   date: string;
   invoiceNumber: string;
+  paidAmount?: number;
+  remainingBalance?: number;
+  paymentStatus?: "paid" | "partial" | "unpaid";
+  paymentBreakdown?: Record<string, number> | null;
   /**
    * When this transaction is an edited copy of an earlier bill,
    * this field stores the original invoice number for traceability.
@@ -93,6 +98,7 @@ export interface Expense {
   id: string;
   title: string;
   amount: number;
+  paymentMethod?: "cash" | "online" | "card" | string;
   notes: string;
   expenseDate: string;
   createdByName?: string;

@@ -51,6 +51,12 @@ const POSBilling = () => {
   );
   const [originalTransaction, setOriginalTransaction] = useState<Transaction | null>(null);
   const [manualDiscount, setManualDiscount] = useState<string>("");
+  const [paidInput, setPaidInput] = useState<string>("");
+  const [customerBalanceSummary, setCustomerBalanceSummary] = useState<{
+    total_amount: number;
+    paid_amount: number;
+    remaining_balance: number;
+  } | null>(null);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -198,6 +204,28 @@ const POSBilling = () => {
     }
   }, [selectedCategoryIds, activeCategoryFilterId]);
 
+  useEffect(() => {
+    if (!selectedCustomer) {
+      setCustomerBalanceSummary(null);
+      return;
+    }
+    const loadBalance = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/customer_balances.php?customerId=${encodeURIComponent(selectedCustomer)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setCustomerBalanceSummary({
+          total_amount: Number(data?.summary?.total_amount ?? 0),
+          paid_amount: Number(data?.summary?.paid_amount ?? 0),
+          remaining_balance: Number(data?.summary?.remaining_balance ?? 0),
+        });
+      } catch {
+        setCustomerBalanceSummary(null);
+      }
+    };
+    void loadBalance();
+  }, [selectedCustomer]);
+
   const filteredServices = services.filter((s) => {
     const matchesCategory = selectedCategorySet.has(s.categoryId);
     const matchesActiveCategory = activeCategoryFilterId === "all" || s.categoryId === activeCategoryFilterId;
@@ -222,6 +250,7 @@ const POSBilling = () => {
           quantity: 1,
           employeeId: employees[0].id,
           employeeName: employees[0].name,
+          assignedEmployees: [{ id: employees[0].id, name: employees[0].name }],
         },
       ]);
     }
@@ -244,6 +273,7 @@ const POSBilling = () => {
           quantity: 1,
           employeeId: employees[0].id,
           employeeName: employees[0].name,
+          assignedEmployees: [{ id: employees[0].id, name: employees[0].name }],
         },
       ]);
     }
@@ -265,10 +295,20 @@ const POSBilling = () => {
     );
   };
 
-  const updateEmployee = (serviceId: string, employeeId: string) => {
+  const toggleAssignedEmployee = (serviceId: string, employeeId: string) => {
     const emp = employees.find((e) => e.id === employeeId);
     if (!emp) return;
-    setCart(cart.map((c) => (c.serviceId === serviceId ? { ...c, employeeId, employeeName: emp.name } : c)));
+    setCart((prev) =>
+      prev.map((c) => {
+        if (c.serviceId !== serviceId) return c;
+        const assigned = [...(c.assignedEmployees ?? (c.employeeId ? [{ id: c.employeeId, name: c.employeeName }] : []))];
+        const exists = assigned.some((a) => a.id === employeeId);
+        const next = exists ? assigned.filter((a) => a.id !== employeeId) : [...assigned, { id: emp.id, name: emp.name }];
+        const limited = next.slice(0, 4);
+        const primary = limited[0] ?? { id: "", name: "" };
+        return { ...c, assignedEmployees: limited, employeeId: primary.id, employeeName: primary.name };
+      })
+    );
   };
 
   const subtotal = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
@@ -298,6 +338,9 @@ const POSBilling = () => {
   const taxableAmount = Math.max(0, subtotal - discountAmount);
   const tax = taxableAmount * (Number.isFinite(settings.taxRate) ? settings.taxRate : 0);
   const grandTotal = taxableAmount + tax;
+  const paidInputNumber = paidInput.trim() === "" ? grandTotal : Number(paidInput);
+  const paidAmount = Math.max(0, Math.min(grandTotal, Number.isFinite(paidInputNumber) ? paidInputNumber : grandTotal));
+  const remainingBalance = Math.max(0, grandTotal - paidAmount);
 
   const handleCheckout = (method: "cash" | "card" | "online") => {
     if (!cart.length) return;
@@ -317,6 +360,10 @@ const POSBilling = () => {
       paymentMethod: method,
       date: dateStr,
       invoiceNumber,
+      paidAmount,
+      remainingBalance,
+      paymentStatus: remainingBalance > 0 ? "partial" : "paid",
+      paymentBreakdown: { [method]: paidAmount },
     };
 
     const submit = async () => {
@@ -369,6 +416,8 @@ const POSBilling = () => {
       discount: discountAmount,
       tax,
       total: grandTotal,
+      paidAmount,
+      balanceAmount: remainingBalance,
     });
 
   const buildInvoiceHtmlFromTx = (tx: Transaction) => {
@@ -390,6 +439,8 @@ const POSBilling = () => {
       discount: Number(tx.discount ?? 0),
       tax: Number(tx.tax ?? 0),
       total: Number(tx.total ?? 0),
+      paidAmount: Number(tx.paidAmount ?? tx.total ?? 0),
+      balanceAmount: Number(tx.remainingBalance ?? 0),
     });
   };
 
@@ -600,19 +651,32 @@ const POSBilling = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-foreground">{item.serviceName}</p>
-                          <label htmlFor={`pos-employee-${item.serviceId}`} className="sr-only">
-                            Employee
-                          </label>
-                          <select
-                            id={`pos-employee-${item.serviceId}`}
-                            value={item.employeeId}
-                            onChange={(e) => updateEmployee(item.serviceId, e.target.value)}
-                            className="mt-1 text-xs bg-secondary text-muted-foreground rounded px-2 py-1 border border-border"
-                          >
-                            {employees.map((emp) => (
-                              <option key={emp.id} value={emp.id}>{emp.name}</option>
-                            ))}
-                          </select>
+                          <div className="mt-1 space-y-1">
+                            <p className="text-[11px] text-muted-foreground">Assign employees (max 4)</p>
+                            <div className="flex flex-wrap gap-1">
+                              {employees.map((emp) => {
+                                const assigned = (item.assignedEmployees ?? []).some((a) => a.id === emp.id);
+                                const disableNew = !assigned && (item.assignedEmployees?.length ?? 0) >= 4;
+                                return (
+                                  <button
+                                    key={emp.id}
+                                    type="button"
+                                    disabled={disableNew}
+                                    onClick={() => toggleAssignedEmployee(item.serviceId, emp.id)}
+                                    className={cn(
+                                      "px-2 py-1 rounded border text-[11px] transition-colors",
+                                      assigned
+                                        ? "bg-primary text-primary-foreground border-primary"
+                                        : "bg-secondary text-muted-foreground border-border hover:bg-accent",
+                                      disableNew && "opacity-40 cursor-not-allowed"
+                                    )}
+                                  >
+                                    {emp.name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
                         <button onClick={() => removeFromCart(item.serviceId)} className="text-muted-foreground hover:text-destructive p-1">
                           <X className="h-3.5 w-3.5" />
@@ -697,6 +761,30 @@ const POSBilling = () => {
                     <span>Grand Total</span>
                     <span>Rs. {grandTotal.toFixed(2)}</span>
                   </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3">
+                    <label htmlFor="pos-paid-amount" className="text-muted-foreground">
+                      Paid now
+                    </label>
+                    <input
+                      id="pos-paid-amount"
+                      type="number"
+                      value={paidInput}
+                      onChange={(e) => setPaidInput(e.target.value)}
+                      className="w-full sm:w-auto min-w-0 flex-1 sm:min-w-[11rem] bg-background text-foreground text-sm rounded px-2 py-1 border border-border"
+                      placeholder={`Full: ${grandTotal.toFixed(2)}`}
+                    />
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Remaining balance</span>
+                    <span className="text-destructive">Rs. {remainingBalance.toFixed(2)}</span>
+                  </div>
+                  {customerBalanceSummary && (
+                    <div className="text-xs text-muted-foreground rounded border border-border p-2 space-y-0.5">
+                      <p>Customer total billed: Rs. {customerBalanceSummary.total_amount.toFixed(2)}</p>
+                      <p>Total paid: Rs. {customerBalanceSummary.paid_amount.toFixed(2)}</p>
+                      <p>Outstanding dues: Rs. {customerBalanceSummary.remaining_balance.toFixed(2)}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Checkout buttons */}

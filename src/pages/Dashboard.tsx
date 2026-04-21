@@ -12,7 +12,15 @@ type RevenueCategory = { name: string; value: number; color?: string };
 const Dashboard = () => {
   const { user } = useAuth();
   const canViewEmployeeSales = user?.role !== "manager";
+  const [paymentLov, setPaymentLov] = useState<"all" | "cash" | "online">("all");
   const [todayRevenue, setTodayRevenue] = useState(0);
+  const [todayExpenses, setTodayExpenses] = useState(0);
+  const [cashInHand, setCashInHand] = useState(0);
+  const [paymentBreakdown, setPaymentBreakdown] = useState<{ cash: number; online: number; card: number }>({
+    cash: 0,
+    online: 0,
+    card: 0,
+  });
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [servicesToday, setServicesToday] = useState(0);
   const [activeServicesCount, setActiveServicesCount] = useState(0);
@@ -24,11 +32,22 @@ const Dashboard = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(STATS_API_BASE);
+        const params = new URLSearchParams();
+        if (paymentLov !== "all") {
+          params.set("paymentType", paymentLov);
+        }
+        const res = await fetch(`${STATS_API_BASE}${params.toString() ? `?${params.toString()}` : ""}`);
         if (!res.ok) return;
         const data = await res.json();
 
         setTodayRevenue(Number(data.todayRevenue ?? 0));
+        setTodayExpenses(Number(data.todayExpenses ?? 0));
+        setCashInHand(Number(data.cashInHand ?? 0));
+        setPaymentBreakdown({
+          cash: Number(data.paymentBreakdown?.cash ?? 0),
+          online: Number(data.paymentBreakdown?.online ?? 0),
+          card: Number(data.paymentBreakdown?.card ?? 0),
+        });
         setTotalCustomers(Number(data.totalCustomers ?? 0));
         setServicesToday(Number(data.servicesToday ?? 0));
         setActiveServicesCount(Number(data.activeServicesCount ?? 0));
@@ -57,7 +76,7 @@ const Dashboard = () => {
     };
 
     void load();
-  }, []);
+  }, [paymentLov]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-fade-in">
@@ -67,11 +86,36 @@ const Dashboard = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted-foreground">Revenue LOV:</span>
+        <select
+          value={paymentLov}
+          onChange={(e) => setPaymentLov(e.target.value as "all" | "cash" | "online")}
+          className="px-3 py-1.5 bg-card text-foreground border border-border rounded-md text-sm"
+        >
+          <option value="all">All</option>
+          <option value="cash">Cash</option>
+          <option value="online">Online</option>
+        </select>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Today's Revenue"
           value={`Rs. ${Number(todayRevenue || 0).toFixed(2)}`}
           subtitle=""
+          icon={<DollarSign className="h-5 w-5" />}
+        />
+        <StatCard
+          title="Today Expenses"
+          value={`Rs. ${Number(todayExpenses || 0).toFixed(2)}`}
+          subtitle=""
+          icon={<DollarSign className="h-5 w-5" />}
+        />
+        <StatCard
+          title="Cash in Hand"
+          value={`Rs. ${Number(cashInHand || 0).toFixed(2)}`}
+          subtitle="Cash revenue - cash expenses"
           icon={<DollarSign className="h-5 w-5" />}
         />
         <StatCard
@@ -94,6 +138,12 @@ const Dashboard = () => {
             icon={<Star className="h-5 w-5" />}
           />
         )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard title="Cash Revenue" value={`Rs. ${paymentBreakdown.cash.toFixed(2)}`} subtitle="" icon={<DollarSign className="h-5 w-5" />} />
+        <StatCard title="Online Revenue" value={`Rs. ${paymentBreakdown.online.toFixed(2)}`} subtitle="" icon={<DollarSign className="h-5 w-5" />} />
+        <StatCard title="Card Revenue" value={`Rs. ${paymentBreakdown.card.toFixed(2)}`} subtitle="" icon={<DollarSign className="h-5 w-5" />} />
       </div>
 
       {/* Charts */}

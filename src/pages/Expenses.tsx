@@ -36,6 +36,7 @@ const Expenses = () => {
           title: String(row.title ?? ""),
           amount: Number(row.amount ?? 0),
           notes: String(row.notes ?? ""),
+          paymentMethod: String(row.payment_method ?? row.paymentMethod ?? "cash"),
           expenseDate: String(row.expense_date ?? row.expenseDate ?? ""),
           createdByName: String(row.created_by_name ?? ""),
           createdAt: String(row.created_at ?? ""),
@@ -93,6 +94,7 @@ const Expenses = () => {
         id: e.id,
         title: e.title,
         amount: e.amount,
+        paymentMethod: (e as Expense & { paymentMethod?: string }).paymentMethod ?? "cash",
         notes: e.notes,
         expenseDate: e.expenseDate,
         createdByName: e.createdByName ?? "",
@@ -108,6 +110,7 @@ const Expenses = () => {
       title: String(fd.get("title") ?? "").trim(),
       amount: Number(fd.get("amount") ?? 0),
       notes: String(fd.get("notes") ?? "").trim(),
+      paymentMethod: String(fd.get("paymentMethod") ?? "cash").trim().toLowerCase(),
       expenseDate: String(fd.get("expenseDate") ?? "").trim(),
     };
 
@@ -260,6 +263,7 @@ const Expenses = () => {
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Title</th>
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Notes</th>
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Created By</th>
+              <th className="text-left py-3 px-4 text-muted-foreground font-medium">Payment</th>
               <th className="text-right py-3 px-4 text-muted-foreground font-medium">Amount</th>
               <th className="text-center py-3 px-4 text-muted-foreground font-medium">Actions</th>
             </tr>
@@ -271,6 +275,7 @@ const Expenses = () => {
                 <td className="py-3 px-4 text-foreground font-medium">{item.title}</td>
                 <td className="py-3 px-4 text-muted-foreground">{item.notes || "—"}</td>
                 <td className="py-3 px-4 text-muted-foreground">{item.createdByName || "—"}</td>
+                <td className="py-3 px-4 text-muted-foreground capitalize">{(item as Expense & { paymentMethod?: string }).paymentMethod || "cash"}</td>
                 <td className="py-3 px-4 text-right font-medium text-foreground">Rs. {Number(item.amount).toFixed(2)}</td>
                 <td className="py-3 px-4">
                   <div className="flex items-center justify-center gap-2">
@@ -303,7 +308,7 @@ const Expenses = () => {
             ))}
             {filteredExpenses.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                <td colSpan={7} className="py-12 text-center text-muted-foreground">
                   No expense entries for selected filter
                 </td>
               </tr>
@@ -367,6 +372,21 @@ const Expenses = () => {
                     defaultValue={editing?.expenseDate || new Date().toISOString().slice(0, 10)}
                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm"
                   />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="expense-paymentMethod" className="text-sm text-muted-foreground">
+                    Payment Method <span className="text-destructive">*</span>
+                  </label>
+                  <select
+                    id="expense-paymentMethod"
+                    name="paymentMethod"
+                    defaultValue={(editing as (Expense & { paymentMethod?: string }) | null)?.paymentMethod || "cash"}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="online">Online</option>
+                    <option value="card">Card</option>
+                  </select>
                 </div>
               </div>
               <div className="space-y-1.5">

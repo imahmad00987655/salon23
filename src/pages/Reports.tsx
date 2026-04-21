@@ -18,6 +18,8 @@ const Reports = () => {
   const [period, setPeriod] = useState<Period>("weekly");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [paymentType, setPaymentType] = useState<"all" | "cash" | "online" | "card">("all");
+  const [expensePaymentType, setExpensePaymentType] = useState<"all" | "cash" | "online" | "card">("all");
   const { user } = useAuth();
   const canExport = user?.role === "super_admin" || user?.role === "manager" || user?.role === "cashier";
   const canViewEmployeeSales = user?.role === "super_admin" || user?.role === "admin";
@@ -25,6 +27,12 @@ const Reports = () => {
   const [revenueCategories, setRevenueCategories] = useState<RevenueCategory[]>([]);
   const [employeePerf, setEmployeePerf] = useState<EmployeePerf[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [expenses, setExpenses] = useState<Array<{ id: string; title: string; amount: number; expense_date: string; payment_method: string }>>([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [netProfitLoss, setNetProfitLoss] = useState(0);
+  const [revenueByPaymentType, setRevenueByPaymentType] = useState<{ cash: number; online: number; card: number }>({ cash: 0, online: 0, card: 0 });
+  const [expensesByPaymentType, setExpensesByPaymentType] = useState<{ cash: number; online: number; card: number }>({ cash: 0, online: 0, card: 0 });
 
   useEffect(() => {
     const load = async () => {
@@ -32,6 +40,8 @@ const Reports = () => {
         const params = new URLSearchParams();
         if (fromDate) params.append("from", fromDate);
         if (toDate) params.append("to", toDate);
+        if (paymentType !== "all") params.append("paymentType", paymentType);
+        if (expensePaymentType !== "all") params.append("expensePaymentType", expensePaymentType);
         const res = await fetch(`${REPORTS_API_BASE}${params.toString() ? `?${params.toString()}` : ""}`);
         if (!res.ok) return;
         const data = await res.json();
@@ -53,7 +63,13 @@ const Reports = () => {
           .map(([label, revenue]) => ({ label, revenue }));
 
         setSalesData(salesPoints);
+        setTotalRevenue(Number(data.totalRevenue ?? 0));
         setRevenueCategories((data.revenueByCategory ?? []) as RevenueCategory[]);
+        setRevenueByPaymentType({
+          cash: Number(data.revenueByPaymentType?.cash ?? 0),
+          online: Number(data.revenueByPaymentType?.online ?? 0),
+          card: Number(data.revenueByPaymentType?.card ?? 0),
+        });
         const emps = (data.employees ?? []) as any[];
         setEmployeePerf(
           emps.map((e) => ({
@@ -66,12 +82,20 @@ const Reports = () => {
           }))
         );
         setTransactions((data.transactions ?? []) as Transaction[]);
+        setExpenses((data.expenses ?? []) as Array<{ id: string; title: string; amount: number; expense_date: string; payment_method: string }>);
+        setTotalExpenses(Number(data.totalExpenses ?? 0));
+        setNetProfitLoss(Number(data.netProfitLoss ?? 0));
+        setExpensesByPaymentType({
+          cash: Number(data.expensesByPaymentType?.cash ?? 0),
+          online: Number(data.expensesByPaymentType?.online ?? 0),
+          card: Number(data.expensesByPaymentType?.card ?? 0),
+        });
       } catch {
         // ignore errors, show empty state
       }
     };
     void load();
-  }, [fromDate, toDate, period]);
+  }, [fromDate, toDate, period, paymentType, expensePaymentType]);
 
   const filteredTransactions = transactions.filter((t) => {
     if (fromDate && t.date < fromDate) return false;
@@ -178,6 +202,70 @@ const Reports = () => {
             className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border"
           />
         </div>
+        <div className="space-y-1">
+          <label htmlFor="reports-payment" className="text-muted-foreground">
+            Revenue payment
+          </label>
+          <select
+            id="reports-payment"
+            value={paymentType}
+            onChange={(e) => setPaymentType(e.target.value as "all" | "cash" | "online" | "card")}
+            className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border"
+          >
+            <option value="all">All</option>
+            <option value="cash">Cash</option>
+            <option value="online">Online</option>
+            <option value="card">Card</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="reports-exp-payment" className="text-muted-foreground">
+            Expense payment
+          </label>
+          <select
+            id="reports-exp-payment"
+            value={expensePaymentType}
+            onChange={(e) => setExpensePaymentType(e.target.value as "all" | "cash" | "online" | "card")}
+            className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border"
+          >
+            <option value="all">All</option>
+            <option value="cash">Cash</option>
+            <option value="online">Online</option>
+            <option value="card">Card</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-xs text-muted-foreground">Total Revenue</p>
+          <p className="text-xl font-heading font-bold text-foreground">Rs. {totalRevenue.toFixed(2)}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-xs text-muted-foreground">Total Expenses</p>
+          <p className="text-xl font-heading font-bold text-foreground">Rs. {totalExpenses.toFixed(2)}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-xs text-muted-foreground">Net Profit / Loss</p>
+          <p className={cn("text-xl font-heading font-bold", netProfitLoss >= 0 ? "text-success" : "text-destructive")}>
+            Rs. {netProfitLoss.toFixed(2)}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-card border border-border rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-card-foreground mb-2">Revenue Payment Split</h3>
+          <p className="text-sm text-muted-foreground">Cash: Rs. {revenueByPaymentType.cash.toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground">Online: Rs. {revenueByPaymentType.online.toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground">Card: Rs. {revenueByPaymentType.card.toFixed(2)}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-card-foreground mb-2">Expenses Payment Split</h3>
+          <p className="text-sm text-muted-foreground">Cash: Rs. {expensesByPaymentType.cash.toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground">Online: Rs. {expensesByPaymentType.online.toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground">Card: Rs. {expensesByPaymentType.card.toFixed(2)}</p>
+        </div>
       </div>
 
       {canExport && (
@@ -282,6 +370,30 @@ const Reports = () => {
           </table>
         </div>
       )}
+
+      <div className="bg-card border border-border rounded-lg p-4 sm:p-5 overflow-x-auto">
+        <h2 className="text-sm font-heading font-semibold text-card-foreground mb-4">Expenses Report</h2>
+        <table className="w-full text-sm min-w-[500px]">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left py-3 px-2 text-muted-foreground font-medium">Date</th>
+              <th className="text-left py-3 px-2 text-muted-foreground font-medium">Title</th>
+              <th className="text-left py-3 px-2 text-muted-foreground font-medium">Payment</th>
+              <th className="text-right py-3 px-2 text-muted-foreground font-medium">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {expenses.map((exp) => (
+              <tr key={exp.id} className="border-b border-border last:border-0">
+                <td className="py-3 px-2 text-foreground">{exp.expense_date}</td>
+                <td className="py-3 px-2 text-foreground">{exp.title}</td>
+                <td className="py-3 px-2 text-muted-foreground capitalize">{exp.payment_method}</td>
+                <td className="py-3 px-2 text-right text-foreground">Rs. {Number(exp.amount ?? 0).toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

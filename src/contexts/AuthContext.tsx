@@ -13,10 +13,10 @@ const AUTH_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/aut
 
 // Permission map per role
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  admin: ["/", "/pos", "/customers", "/services", "/packages", "/discounts", "/employees", "/reports", "/invoices", "/expenses", "/settings"],
-  super_admin: ["/", "/pos", "/customers", "/services", "/packages", "/discounts", "/employees", "/reports", "/invoices", "/expenses", "/settings"],
-  manager: ["/", "/pos", "/customers", "/services", "/packages", "/discounts", "/employees", "/reports", "/invoices", "/expenses"],
-  cashier: ["/pos", "/customers", "/discounts", "/reports", "/expenses"],
+  admin: ["/", "/pos", "/customers", "/services", "/packages", "/discounts", "/employees", "/reports", "/invoices", "/expenses", "/customer-balances", "/settings"],
+  super_admin: ["/", "/pos", "/customers", "/services", "/packages", "/discounts", "/employees", "/reports", "/invoices", "/expenses", "/customer-balances", "/settings"],
+  manager: ["/", "/pos", "/customers", "/services", "/packages", "/discounts", "/employees", "/reports", "/invoices", "/expenses", "/customer-balances"],
+  cashier: ["/pos", "/customers", "/discounts", "/reports", "/expenses", "/customer-balances"],
 };
 
 interface AuthContextType {
