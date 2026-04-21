@@ -308,6 +308,7 @@ const Invoices = () => {
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Customer</th>
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Items</th>
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Payment</th>
+              <th className="text-left py-3 px-4 text-muted-foreground font-medium">Status</th>
               <th className="text-right py-3 px-4 text-muted-foreground font-medium">Paid</th>
               <th className="text-right py-3 px-4 text-muted-foreground font-medium">Remaining</th>
               <th className="text-right py-3 px-4 text-muted-foreground font-medium">Total</th>
@@ -329,6 +330,20 @@ const Invoices = () => {
                     "bg-accent text-accent-foreground"
                   )}>
                     {t.paymentMethod}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  <span
+                    className={cn(
+                      "px-2 py-0.5 rounded text-xs font-medium capitalize",
+                      (t.paymentStatus ?? "paid") === "paid"
+                        ? "bg-success/10 text-success"
+                        : (t.paymentStatus ?? "paid") === "partial"
+                          ? "bg-yellow-500/10 text-yellow-600"
+                          : "bg-destructive/10 text-destructive"
+                    )}
+                  >
+                    {t.paymentStatus ?? "paid"}
                   </span>
                 </td>
                 <td className="py-3 px-4 text-right text-foreground">Rs. {Number(t.paidAmount ?? t.total ?? 0).toFixed(2)}</td>
@@ -383,7 +398,7 @@ const Invoices = () => {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-12 text-center text-muted-foreground">No invoices found</td>
+                <td colSpan={10} className="py-12 text-center text-muted-foreground">No invoices found</td>
               </tr>
             )}
           </tbody>

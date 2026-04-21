@@ -389,6 +389,34 @@ const POSBilling = () => {
             return;
           }
           const updated = await res.json().catch(() => null);
+          const customer = customers.find((c) => c.id === selectedCustomer);
+          const remainingAfter = Number(updated?.summary?.remaining_balance ?? dueRemainingAfterPayment);
+          const dueTx: Transaction = {
+            id: `due-${Date.now()}`,
+            customerId: selectedCustomer,
+            customerName: customer?.name ?? "Customer",
+            items: [
+              {
+                serviceId: "due-payment",
+                serviceName: "Due Payment Adjustment",
+                price: duePaymentAmount,
+                quantity: 1,
+                employeeId: "",
+                employeeName: "-",
+              },
+            ],
+            subtotal: duePaymentAmount,
+            discount: 0,
+            tax: 0,
+            total: duePaymentAmount,
+            paymentMethod: method,
+            date: new Date().toISOString().slice(0, 10),
+            invoiceNumber: `DUE-${String(Date.now()).slice(-6)}`,
+            paidAmount: duePaymentAmount,
+            remainingBalance: Math.max(0, remainingAfter),
+            paymentStatus: remainingAfter > 0 ? "partial" : "paid",
+            paymentBreakdown: { [method]: duePaymentAmount },
+          };
           if (updated?.summary) {
             setCustomerBalanceSummary({
               total_amount: Number(updated.summary.total_amount ?? 0),
@@ -396,8 +424,9 @@ const POSBilling = () => {
               remaining_balance: Number(updated.summary.remaining_balance ?? 0),
             });
           }
+          setTransactions((prev) => [...prev, dueTx]);
+          setOriginalTransaction(dueTx);
           setCheckoutComplete(true);
-          setOriginalTransaction(null);
         } catch {
           setCheckoutError("Failed to apply due payment.");
         }
@@ -467,6 +496,8 @@ const POSBilling = () => {
   }, [paidInput, billingMode, selectedCustomer]);
 
   const customer = customers.find((c) => c.id === selectedCustomer);
+  const completedAmount = Number(originalTransaction?.paidAmount ?? originalTransaction?.total ?? grandTotal);
+  const completedInvoiceNumber = originalTransaction?.invoiceNumber ?? invoiceNumber;
 
   const buildInvoiceHtmlFromCart = () =>
     buildProfessionalInvoiceHtml({
@@ -937,9 +968,9 @@ const POSBilling = () => {
                 </div>
                 <div className="text-center">
                   <h2 className="text-lg font-heading font-bold text-card-foreground">Payment Complete</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Invoice {invoiceNumber}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Invoice {completedInvoiceNumber}</p>
                   <p className="text-2xl font-heading font-bold text-foreground mt-3">
-                    Rs. {grandTotal.toFixed(2)}
+                    Rs. {completedAmount.toFixed(2)}
                   </p>
                 </div>
 
