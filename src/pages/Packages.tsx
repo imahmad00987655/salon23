@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Package, Service } from "@/types/pos";
 import { Plus, X, Gift } from "lucide-react";
 
-const PACKAGES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/packages.php";
-const SERVICES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/services.php";
+const PACKAGES_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/packages.php";
+const SERVICES_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/services.php";
 
 const Packages = () => {
   const [packageList, setPackageList] = useState<Package[]>([]);

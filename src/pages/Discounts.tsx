@@ -6,7 +6,7 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { DEFAULT_DISCOUNTS, DISCOUNTS_STORAGE_KEY } from "@/lib/discounts";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "@/lib/appSettings";
 
-const DISCOUNTS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/discounts.php";
+const DISCOUNTS_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/discounts.php";
 
 const Discounts = () => {
   const [discountList, setDiscountList] = useLocalStorageState<Discount[]>(DISCOUNTS_STORAGE_KEY, DEFAULT_DISCOUNTS);

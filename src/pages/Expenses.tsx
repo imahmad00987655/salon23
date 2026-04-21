@@ -4,7 +4,7 @@ import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { downloadCsv } from "@/lib/exporting";
 
-const EXPENSES_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/expenses.php";
+const EXPENSES_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/expenses.php";
 
 const Expenses = () => {
   const { user } = useAuth();

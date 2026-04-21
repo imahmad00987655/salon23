@@ -9,7 +9,7 @@ type CustomerBalance = {
   invoice_count: number;
 };
 
-const API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/customer_balances.php";
+const API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/customer_balances.php";
 
 const CustomerBalances = () => {
   const [rows, setRows] = useState<CustomerBalance[]>([]);

@@ -9,7 +9,7 @@ export interface AppUser {
   email: string;
 }
 
-const AUTH_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/auth.php";
+const AUTH_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/auth.php";
 
 // Permission map per role
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {

@@ -5,7 +5,7 @@ import { Transaction, Employee } from "@/types/pos";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
 
-const STATS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/stats.php";
+const STATS_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/stats.php";
 
 type RevenueCategory = { name: string; value: number; color?: string };
 

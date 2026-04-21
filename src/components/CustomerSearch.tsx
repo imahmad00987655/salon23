@@ -3,7 +3,7 @@ import { Search, User, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Customer } from "@/types/pos";
 
-const CUSTOMERS_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com/customers.php";
+const CUSTOMERS_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/customers.php";
 
 interface CustomerSearchProps {
   selectedCustomerId: string | null;
