@@ -15,8 +15,14 @@ const Dashboard = () => {
   const [paymentLov, setPaymentLov] = useState<"all" | "cash" | "online" | "card">("all");
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [todayExpenses, setTodayExpenses] = useState(0);
+  const [todayNet, setTodayNet] = useState(0);
   const [cashInHand, setCashInHand] = useState(0);
   const [paymentBreakdown, setPaymentBreakdown] = useState<{ cash: number; online: number; card: number }>({
+    cash: 0,
+    online: 0,
+    card: 0,
+  });
+  const [expenseBreakdown, setExpenseBreakdown] = useState<{ cash: number; online: number; card: number }>({
     cash: 0,
     online: 0,
     card: 0,
@@ -42,11 +48,17 @@ const Dashboard = () => {
 
         setTodayRevenue(Number(data.todayRevenue ?? 0));
         setTodayExpenses(Number(data.todayExpenses ?? 0));
+        setTodayNet(Number(data.todayNet ?? (Number(data.todayRevenue ?? 0) - Number(data.todayExpenses ?? 0))));
         setCashInHand(Number(data.cashInHand ?? 0));
         setPaymentBreakdown({
           cash: Number(data.paymentBreakdown?.cash ?? 0),
           online: Number(data.paymentBreakdown?.online ?? 0),
           card: Number(data.paymentBreakdown?.card ?? 0),
+        });
+        setExpenseBreakdown({
+          cash: Number(data.expenseBreakdown?.cash ?? 0),
+          online: Number(data.expenseBreakdown?.online ?? 0),
+          card: Number(data.expenseBreakdown?.card ?? 0),
         });
         setTotalCustomers(Number(data.totalCustomers ?? 0));
         setServicesToday(Number(data.servicesToday ?? 0));
@@ -78,6 +90,9 @@ const Dashboard = () => {
     void load();
   }, [paymentLov]);
 
+  const lovLabel =
+    paymentLov === "all" ? "All" : paymentLov === "cash" ? "Cash" : paymentLov === "online" ? "Online" : "Card";
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-fade-in">
       <div>
@@ -102,21 +117,27 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
-          title="Today's Revenue"
+          title={`${lovLabel} Revenue`}
           value={`Rs. ${Number(todayRevenue || 0).toFixed(2)}`}
           subtitle=""
           icon={<DollarSign className="h-5 w-5" />}
         />
         <StatCard
-          title="Today Expenses"
+          title={`${lovLabel} Expense`}
           value={`Rs. ${Number(todayExpenses || 0).toFixed(2)}`}
           subtitle=""
           icon={<DollarSign className="h-5 w-5" />}
         />
         <StatCard
-          title="Cash in Hand"
+          title={`${lovLabel} Net`}
+          value={`Rs. ${Number(todayNet || 0).toFixed(2)}`}
+          subtitle="Revenue - Expense"
+          icon={<DollarSign className="h-5 w-5" />}
+        />
+        <StatCard
+          title={`${lovLabel} In Hand`}
           value={`Rs. ${Number(cashInHand || 0).toFixed(2)}`}
-          subtitle="Cash revenue - cash expenses"
+          subtitle="Available after expenses"
           icon={<DollarSign className="h-5 w-5" />}
         />
         <StatCard
@@ -142,9 +163,24 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard title="Cash Revenue" value={`Rs. ${paymentBreakdown.cash.toFixed(2)}`} subtitle="" icon={<DollarSign className="h-5 w-5" />} />
-        <StatCard title="Online Revenue" value={`Rs. ${paymentBreakdown.online.toFixed(2)}`} subtitle="" icon={<DollarSign className="h-5 w-5" />} />
-        <StatCard title="Card Revenue" value={`Rs. ${paymentBreakdown.card.toFixed(2)}`} subtitle="" icon={<DollarSign className="h-5 w-5" />} />
+        <StatCard
+          title="Cash (Revenue / Expense / Net)"
+          value={`Rs. ${(paymentBreakdown.cash - expenseBreakdown.cash).toFixed(2)}`}
+          subtitle={`Rs. ${paymentBreakdown.cash.toFixed(2)} / Rs. ${expenseBreakdown.cash.toFixed(2)}`}
+          icon={<DollarSign className="h-5 w-5" />}
+        />
+        <StatCard
+          title="Online (Revenue / Expense / Net)"
+          value={`Rs. ${(paymentBreakdown.online - expenseBreakdown.online).toFixed(2)}`}
+          subtitle={`Rs. ${paymentBreakdown.online.toFixed(2)} / Rs. ${expenseBreakdown.online.toFixed(2)}`}
+          icon={<DollarSign className="h-5 w-5" />}
+        />
+        <StatCard
+          title="Card (Revenue / Expense / Net)"
+          value={`Rs. ${(paymentBreakdown.card - expenseBreakdown.card).toFixed(2)}`}
+          subtitle={`Rs. ${paymentBreakdown.card.toFixed(2)} / Rs. ${expenseBreakdown.card.toFixed(2)}`}
+          icon={<DollarSign className="h-5 w-5" />}
+        />
       </div>
 
       {/* Charts */}
