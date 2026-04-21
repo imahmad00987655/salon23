@@ -52,6 +52,8 @@ const POSBilling = () => {
   const [originalTransaction, setOriginalTransaction] = useState<Transaction | null>(null);
   const [manualDiscount, setManualDiscount] = useState<string>("");
   const [paidInput, setPaidInput] = useState<string>("");
+  const [billingMode, setBillingMode] = useState<"new_invoice" | "existing_due">("new_invoice");
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [customerBalanceSummary, setCustomerBalanceSummary] = useState<{
     total_amount: number;
     paid_amount: number;
@@ -226,6 +228,18 @@ const POSBilling = () => {
     void loadBalance();
   }, [selectedCustomer]);
 
+  useEffect(() => {
+    if (!selectedCustomer) {
+      setBillingMode("new_invoice");
+      return;
+    }
+    if ((customerBalanceSummary?.remaining_balance ?? 0) > 0) {
+      setBillingMode("existing_due");
+    } else {
+      setBillingMode("new_invoice");
+    }
+  }, [selectedCustomer, customerBalanceSummary?.remaining_balance]);
+
   const filteredServices = services.filter((s) => {
     const matchesCategory = selectedCategorySet.has(s.categoryId);
     const matchesActiveCategory = activeCategoryFilterId === "all" || s.categoryId === activeCategoryFilterId;
@@ -234,6 +248,7 @@ const POSBilling = () => {
   });
 
   const addToCart = (serviceId: string) => {
+    if (billingMode === "existing_due") return;
     const service = services.find((s) => s.id === serviceId);
     if (!service) return;
 
@@ -257,6 +272,7 @@ const POSBilling = () => {
   };
 
   const addPackageToCart = (packageId: string) => {
+    if (billingMode === "existing_due") return;
     const pkg = packages.find((p) => p.id === packageId);
     if (!pkg) return;
 
@@ -343,6 +359,51 @@ const POSBilling = () => {
   const remainingBalance = Math.max(0, grandTotal - paidAmount);
 
   const handleCheckout = (method: "cash" | "card" | "online") => {
+    setCheckoutError(null);
+    if (billingMode === "existing_due") {
+      if (!selectedCustomer) {
+        setCheckoutError("Select a customer first.");
+        return;
+      }
+      if (paidAmount <= 0) {
+        setCheckoutError("Enter payment amount to clear due.");
+        return;
+      }
+      const submitDuePayment = async () => {
+        try {
+          const res = await fetch(TRANSACTIONS_API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mode: "due_payment",
+              customerId: selectedCustomer,
+              paymentMethod: method,
+              paidAmount,
+              date: new Date().toISOString().slice(0, 10),
+            }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            setCheckoutError(String(err?.error ?? "Failed to apply payment to due invoices."));
+            return;
+          }
+          const updated = await res.json().catch(() => null);
+          if (updated?.summary) {
+            setCustomerBalanceSummary({
+              total_amount: Number(updated.summary.total_amount ?? 0),
+              paid_amount: Number(updated.summary.paid_amount ?? 0),
+              remaining_balance: Number(updated.summary.remaining_balance ?? 0),
+            });
+          }
+          setCheckoutComplete(true);
+          setOriginalTransaction(null);
+        } catch {
+          setCheckoutError("Failed to apply due payment.");
+        }
+      };
+      void submitDuePayment();
+      return;
+    }
     if (!cart.length) return;
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
@@ -393,6 +454,8 @@ const POSBilling = () => {
     setCheckoutComplete(false);
     setSearchQuery("");
     setOriginalTransaction(null);
+    setCheckoutError(null);
+    setPaidInput("");
     setInvoiceNumber(`${settings.invoicePrefix}${String(Math.floor(Math.random() * 9000) + 1000)}`);
   };
 
@@ -780,11 +843,33 @@ const POSBilling = () => {
                   </div>
                   {customerBalanceSummary && (
                     <div className="text-xs text-muted-foreground rounded border border-border p-2 space-y-0.5">
+                      {(customerBalanceSummary.remaining_balance ?? 0) > 0 && (
+                        <div className="flex flex-col gap-1 pb-1 mb-1 border-b border-border">
+                          <p className="text-foreground font-medium">Billing option</p>
+                          <label className="inline-flex items-center gap-2">
+                            <input
+                              type="radio"
+                              checked={billingMode === "existing_due"}
+                              onChange={() => setBillingMode("existing_due")}
+                            />
+                            Apply payment to existing due
+                          </label>
+                          <label className="inline-flex items-center gap-2">
+                            <input
+                              type="radio"
+                              checked={billingMode === "new_invoice"}
+                              onChange={() => setBillingMode("new_invoice")}
+                            />
+                            Create new invoice
+                          </label>
+                        </div>
+                      )}
                       <p>Customer total billed: Rs. {customerBalanceSummary.total_amount.toFixed(2)}</p>
                       <p>Total paid: Rs. {customerBalanceSummary.paid_amount.toFixed(2)}</p>
                       <p>Outstanding dues: Rs. {customerBalanceSummary.remaining_balance.toFixed(2)}</p>
                     </div>
                   )}
+                  {checkoutError && <p className="text-xs text-destructive">{checkoutError}</p>}
                 </div>
 
                 {/* Checkout buttons */}

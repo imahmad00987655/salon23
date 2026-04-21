@@ -20,7 +20,7 @@ const Employees = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const canViewEmployeeSales = user?.role !== "manager";
+  const canViewEmployeeSales = user?.role !== "cashier";
   const [roleOptions, setRoleOptions] = useState<string[]>([
     "stylist",
     "nail_tech",

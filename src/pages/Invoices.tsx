@@ -12,11 +12,14 @@ const Invoices = () => {
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<"all" | "paid" | "partial" | "unpaid">("all");
+  const [customerFilter, setCustomerFilter] = useState<string>("all");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<Transaction | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Transaction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const isSuperAdmin = user?.role === "super_admin";
+  const canEditInvoice = user?.role === "super_admin" || user?.role === "admin" || user?.role === "manager";
 
   useEffect(() => {
     loadTransactions();
@@ -32,8 +35,25 @@ const Invoices = () => {
     }
     if (fromDate && t.date < fromDate) return false;
     if (toDate && t.date > toDate) return false;
+    if (paymentStatusFilter !== "all" && (t.paymentStatus ?? "paid") !== paymentStatusFilter) return false;
+    if (customerFilter !== "all" && t.customerId !== customerFilter) return false;
     return true;
   });
+  const totals = filtered.reduce(
+    (acc, tx) => {
+      const total = Number(tx.total ?? 0);
+      const paid = Number(tx.paidAmount ?? total);
+      const remaining = Number(tx.remainingBalance ?? 0);
+      acc.total += total;
+      acc.paid += paid;
+      acc.remaining += remaining;
+      return acc;
+    },
+    { total: 0, paid: 0, remaining: 0 }
+  );
+  const customerOptions = Array.from(
+    new Map(transactions.map((t) => [String(t.customerId), { id: String(t.customerId), name: t.customerName }])).values()
+  );
 
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -72,6 +92,8 @@ const Invoices = () => {
       if (fromDate) params.set("from", fromDate);
       if (toDate) params.set("to", toDate);
       if (search.trim()) params.set("search", search.trim());
+      if (paymentStatusFilter !== "all") params.set("status", paymentStatusFilter);
+      if (customerFilter !== "all") params.set("customerId", customerFilter);
 
       const res = await fetch(`${TRANSACTIONS_API_BASE}?${params.toString()}`);
       if (!res.ok) return;
@@ -87,7 +109,7 @@ const Invoices = () => {
       void loadTransactions();
     }, 250);
     return () => window.clearTimeout(timeout);
-  }, [search, fromDate, toDate]);
+  }, [search, fromDate, toDate, paymentStatusFilter, customerFilter]);
 
   const handleDeleteInvoice = async (tx: Transaction) => {
     if (!isSuperAdmin || !window.confirm(`Delete invoice ${tx.invoiceNumber}? This cannot be undone.`)) return;
@@ -107,7 +129,7 @@ const Invoices = () => {
   };
 
   const handleSaveEditInvoice = async (updated: Transaction) => {
-    if (!isSuperAdmin) return;
+    if (!canEditInvoice) return;
     setActionError(null);
     try {
       const res = await fetch(`${TRANSACTIONS_API_BASE}?id=${updated.id}`, {
@@ -133,7 +155,7 @@ const Invoices = () => {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((data.error as string) || "Update failed");
+        if (!res.ok) throw new Error((data.error as string) || "Update failed");
       await loadTransactions();
       setEditingInvoice(null);
       setSelectedInvoice(updated);
@@ -182,6 +204,20 @@ const Invoices = () => {
           Export CSV
         </button>
       </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-card border border-border rounded-md p-3">
+          <p className="text-xs text-muted-foreground">Filtered Total</p>
+          <p className="font-heading font-bold text-foreground">Rs. {totals.total.toFixed(2)}</p>
+        </div>
+        <div className="bg-card border border-border rounded-md p-3">
+          <p className="text-xs text-muted-foreground">Filtered Paid</p>
+          <p className="font-heading font-bold text-success">Rs. {totals.paid.toFixed(2)}</p>
+        </div>
+        <div className="bg-card border border-border rounded-md p-3">
+          <p className="text-xs text-muted-foreground">Filtered Remaining</p>
+          <p className="font-heading font-bold text-destructive">Rs. {totals.remaining.toFixed(2)}</p>
+        </div>
+      </div>
 
       {/* Search */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -212,6 +248,40 @@ const Invoices = () => {
               onChange={(e) => setFromDate(e.target.value)}
               className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
             />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="invoice-status" className="text-muted-foreground">
+              Status
+            </label>
+            <select
+              id="invoice-status"
+              value={paymentStatusFilter}
+              onChange={(e) => setPaymentStatusFilter(e.target.value as "all" | "paid" | "partial" | "unpaid")}
+              className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
+            >
+              <option value="all">All</option>
+              <option value="paid">Paid</option>
+              <option value="partial">Partial</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="invoice-customer" className="text-muted-foreground">
+              Customer
+            </label>
+            <select
+              id="invoice-customer"
+              value={customerFilter}
+              onChange={(e) => setCustomerFilter(e.target.value)}
+              className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
+            >
+              <option value="all">All</option>
+              {customerOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="space-y-1">
             <label htmlFor="invoice-to" className="text-muted-foreground">
@@ -287,7 +357,7 @@ const Invoices = () => {
                     >
                       <Printer className="h-4 w-4" />
                     </button>
-                    {isSuperAdmin && (
+                    {canEditInvoice && (
                       <>
                         <button
                           onClick={() => setEditingInvoice(t)}
@@ -296,13 +366,15 @@ const Invoices = () => {
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
-                        <button
+                        {isSuperAdmin && (
+                          <button
                           onClick={() => handleDeleteInvoice(t)}
                           className="p-1.5 rounded hover:bg-destructive/20 text-destructive transition-colors"
                           title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
+                        )}
                       </>
                     )}
                   </div>
@@ -451,7 +523,7 @@ const Invoices = () => {
       )}
 
       {/* Edit Invoice Modal (Super Admin only) */}
-      {editingInvoice && isSuperAdmin && (
+      {editingInvoice && canEditInvoice && (
         <EditInvoiceModal
           transaction={editingInvoice}
           onClose={() => { setEditingInvoice(null); setActionError(null); }}
@@ -482,6 +554,7 @@ function EditInvoiceModal({
   );
   const [date, setDate] = useState(transaction.date);
   const [invoiceNumber, setInvoiceNumber] = useState(transaction.invoiceNumber);
+  const [paidAmount, setPaidAmount] = useState<number>(Number(transaction.paidAmount ?? transaction.total ?? 0));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -491,6 +564,14 @@ function EditInvoiceModal({
       paymentMethod,
       date,
       invoiceNumber,
+      paidAmount,
+      remainingBalance: Math.max(0, Number(transaction.total ?? 0) - paidAmount),
+      paymentStatus:
+        Math.max(0, Number(transaction.total ?? 0) - paidAmount) <= 0
+          ? "paid"
+          : paidAmount > 0
+            ? "partial"
+            : "unpaid",
     });
   };
 
@@ -549,6 +630,20 @@ function EditInvoiceModal({
               className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm"
               required
             />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm text-muted-foreground">Paid amount</label>
+            <input
+              type="number"
+              min={0}
+              max={Number(transaction.total ?? 0)}
+              value={paidAmount}
+              onChange={(e) => setPaidAmount(Math.max(0, Number(e.target.value || 0)))}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Remaining: Rs. {Math.max(0, Number(transaction.total ?? 0) - paidAmount).toFixed(2)}
+            </p>
           </div>
           <p className="text-xs text-muted-foreground">Line items and totals are not editable here.</p>
           <div className="flex gap-2 pt-2">

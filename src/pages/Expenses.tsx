@@ -16,7 +16,7 @@ const Expenses = () => {
 
   const canEditDelete = user?.role === "admin" || user?.role === "super_admin";
 
-  type ExpenseFilterMode = "weekly" | "monthly" | "custom";
+  type ExpenseFilterMode = "daily" | "weekly" | "monthly" | "custom";
   const [filterMode, setFilterMode] = useState<ExpenseFilterMode>("monthly");
   const [customFrom, setCustomFrom] = useState<string>("");
   const [customTo, setCustomTo] = useState<string>("");
@@ -60,7 +60,10 @@ const Expenses = () => {
     let from: string | null = null;
     let to: string | null = null;
 
-    if (filterMode === "weekly") {
+    if (filterMode === "daily") {
+      from = ymd(today);
+      to = ymd(today);
+    } else if (filterMode === "weekly") {
       const fromD = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
       from = ymd(fromD);
       to = ymd(today);
@@ -210,6 +213,7 @@ const Expenses = () => {
             className="px-3 py-2 bg-card text-foreground rounded-md border border-border text-sm"
           >
             <option value="weekly">Weekly</option>
+            <option value="daily">Daily</option>
             <option value="monthly">Monthly</option>
             <option value="custom">Custom</option>
           </select>

@@ -12,7 +12,7 @@ type RevenueCategory = { name: string; value: number; color?: string };
 const Dashboard = () => {
   const { user } = useAuth();
   const canViewEmployeeSales = user?.role !== "manager";
-  const [paymentLov, setPaymentLov] = useState<"all" | "cash" | "online">("all");
+  const [paymentLov, setPaymentLov] = useState<"all" | "cash" | "online" | "card">("all");
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [todayExpenses, setTodayExpenses] = useState(0);
   const [cashInHand, setCashInHand] = useState(0);
@@ -90,12 +90,13 @@ const Dashboard = () => {
         <span className="text-sm text-muted-foreground">Revenue LOV:</span>
         <select
           value={paymentLov}
-          onChange={(e) => setPaymentLov(e.target.value as "all" | "cash" | "online")}
+          onChange={(e) => setPaymentLov(e.target.value as "all" | "cash" | "online" | "card")}
           className="px-3 py-1.5 bg-card text-foreground border border-border rounded-md text-sm"
         >
           <option value="all">All</option>
           <option value="cash">Cash</option>
           <option value="online">Online</option>
+          <option value="card">Card</option>
         </select>
       </div>
 
