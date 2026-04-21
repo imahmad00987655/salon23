@@ -345,9 +345,16 @@ const POSBilling = () => {
   const paidAmount = Math.max(0, Math.min(grandTotal, Number.isFinite(paidInputNumber) ? paidInputNumber : grandTotal));
   const remainingBalance = Math.max(0, grandTotal - paidAmount);
   const hasOutstandingDue = (customerBalanceSummary?.remaining_balance ?? 0) > 0;
+  const outstandingDueAmount = Math.max(0, Number(customerBalanceSummary?.remaining_balance ?? 0));
+  const duePaidInputNumber = paidInput.trim() === "" ? 0 : Number(paidInput);
+  const duePaymentAmount = Math.max(
+    0,
+    Math.min(outstandingDueAmount, Number.isFinite(duePaidInputNumber) ? duePaidInputNumber : 0)
+  );
+  const dueRemainingAfterPayment = Math.max(0, outstandingDueAmount - duePaymentAmount);
   const canCheckout =
     billingMode === "existing_due"
-      ? Boolean(selectedCustomer) && Number(paidInput || 0) > 0
+      ? Boolean(selectedCustomer) && duePaymentAmount > 0
       : billingMode === "new_invoice"
         ? cart.length > 0
         : false;
@@ -359,7 +366,7 @@ const POSBilling = () => {
         setCheckoutError("Select a customer first.");
         return;
       }
-      if (paidAmount <= 0) {
+      if (duePaymentAmount <= 0) {
         setCheckoutError("Enter payment amount to clear due.");
         return;
       }
@@ -372,7 +379,7 @@ const POSBilling = () => {
               mode: "due_payment",
               customerId: selectedCustomer,
               paymentMethod: method,
-              paidAmount,
+              paidAmount: duePaymentAmount,
               date: new Date().toISOString().slice(0, 10),
             }),
           });
@@ -452,6 +459,12 @@ const POSBilling = () => {
     setPaidInput("");
     setInvoiceNumber(`${settings.invoicePrefix}${String(Math.floor(Math.random() * 9000) + 1000)}`);
   };
+
+  useEffect(() => {
+    if (!checkoutError) return;
+    setCheckoutError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paidInput, billingMode, selectedCustomer]);
 
   const customer = customers.find((c) => c.id === selectedCustomer);
 
@@ -833,7 +846,9 @@ const POSBilling = () => {
                   </div>
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Remaining balance</span>
-                    <span className="text-destructive">Rs. {remainingBalance.toFixed(2)}</span>
+                    <span className="text-destructive">
+                      Rs. {(billingMode === "existing_due" ? dueRemainingAfterPayment : remainingBalance).toFixed(2)}
+                    </span>
                   </div>
                   {customerBalanceSummary && (
                     <div className="text-xs text-muted-foreground rounded border border-border p-2 space-y-0.5">
