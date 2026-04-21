@@ -6,7 +6,7 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "@/lib/appSettings";
 import { cn } from "@/lib/utils";
 
-const PROD_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com";
+const PROD_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com";
 const UPDATE_PROFILE_API = import.meta.env.DEV ? "/api/update_profile.php" : `${PROD_API_BASE}/update_profile.php`;
 const USERS_API = import.meta.env.DEV ? "/api/users.php" : `${PROD_API_BASE}/users.php`;
 const UPDATE_USER_PASSWORD_API = import.meta.env.DEV

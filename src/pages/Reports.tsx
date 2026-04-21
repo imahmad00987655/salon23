@@ -10,7 +10,7 @@ type Period = "daily" | "weekly" | "monthly" | "yearly";
 type SalesPoint = { label: string; revenue: number };
 type RevenueCategory = { name: string; value: number };
 type EmployeePerf = Pick<Employee, "id" | "name" | "role" | "servicesPerformed" | "revenueGenerated" | "commissionEarned">;
-const PROD_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com";
+const PROD_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com";
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "") || PROD_API_BASE;
 const REPORTS_API_BASE = `${API_BASE}/reports.php`;
 

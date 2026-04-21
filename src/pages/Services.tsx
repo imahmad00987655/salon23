@@ -4,7 +4,7 @@ import { Plus, Search, X, Clock, ImagePlus, ChevronDown, Check } from "lucide-re
 import { cn } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 
-const PROD_API_BASE = "https://saddlebrown-antelope-612005.hostingersite.com";
+const PROD_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com";
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "") || PROD_API_BASE;
 const SERVICES_API_BASE = `${API_BASE}/services.php`;
 const CATEGORIES_API_BASE = `${API_BASE}/categories.php`;
