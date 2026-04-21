@@ -52,7 +52,7 @@ const POSBilling = () => {
   const [originalTransaction, setOriginalTransaction] = useState<Transaction | null>(null);
   const [manualDiscount, setManualDiscount] = useState<string>("");
   const [paidInput, setPaidInput] = useState<string>("");
-  const [billingMode, setBillingMode] = useState<"new_invoice" | "existing_due">("new_invoice");
+  const [billingMode, setBillingMode] = useState<"new_invoice" | "existing_due" | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [customerBalanceSummary, setCustomerBalanceSummary] = useState<{
     total_amount: number;
@@ -119,9 +119,6 @@ const POSBilling = () => {
             active: Boolean(row.active ?? 1),
           }));
           setCustomers(mappedCustomers);
-          if (!selectedCustomer && mappedCustomers.length > 0) {
-            setSelectedCustomer(mappedCustomers[0].id);
-          }
         }
 
         // Employees
@@ -209,8 +206,10 @@ const POSBilling = () => {
   useEffect(() => {
     if (!selectedCustomer) {
       setCustomerBalanceSummary(null);
+      setBillingMode(null);
       return;
     }
+    setBillingMode(null);
     const loadBalance = async () => {
       try {
         const res = await fetch(`${API_BASE}/customer_balances.php?customerId=${encodeURIComponent(selectedCustomer)}`);
@@ -227,18 +226,6 @@ const POSBilling = () => {
     };
     void loadBalance();
   }, [selectedCustomer]);
-
-  useEffect(() => {
-    if (!selectedCustomer) {
-      setBillingMode("new_invoice");
-      return;
-    }
-    if ((customerBalanceSummary?.remaining_balance ?? 0) > 0) {
-      setBillingMode("existing_due");
-    } else {
-      setBillingMode("new_invoice");
-    }
-  }, [selectedCustomer, customerBalanceSummary?.remaining_balance]);
 
   const filteredServices = services.filter((s) => {
     const matchesCategory = selectedCategorySet.has(s.categoryId);
@@ -357,6 +344,13 @@ const POSBilling = () => {
   const paidInputNumber = paidInput.trim() === "" ? grandTotal : Number(paidInput);
   const paidAmount = Math.max(0, Math.min(grandTotal, Number.isFinite(paidInputNumber) ? paidInputNumber : grandTotal));
   const remainingBalance = Math.max(0, grandTotal - paidAmount);
+  const hasOutstandingDue = (customerBalanceSummary?.remaining_balance ?? 0) > 0;
+  const canCheckout =
+    billingMode === "existing_due"
+      ? Boolean(selectedCustomer) && Number(paidInput || 0) > 0
+      : billingMode === "new_invoice"
+        ? cart.length > 0
+        : false;
 
   const handleCheckout = (method: "cash" | "card" | "online") => {
     setCheckoutError(null);
@@ -843,7 +837,7 @@ const POSBilling = () => {
                   </div>
                   {customerBalanceSummary && (
                     <div className="text-xs text-muted-foreground rounded border border-border p-2 space-y-0.5">
-                      {(customerBalanceSummary.remaining_balance ?? 0) > 0 && (
+                      {hasOutstandingDue && (
                         <div className="flex flex-col gap-1 pb-1 mb-1 border-b border-border">
                           <p className="text-foreground font-medium">Billing option</p>
                           <label className="inline-flex items-center gap-2">
@@ -854,6 +848,19 @@ const POSBilling = () => {
                             />
                             Apply payment to existing due
                           </label>
+                          <label className="inline-flex items-center gap-2">
+                            <input
+                              type="radio"
+                              checked={billingMode === "new_invoice"}
+                              onChange={() => setBillingMode("new_invoice")}
+                            />
+                            Create new invoice
+                          </label>
+                        </div>
+                      )}
+                      {!hasOutstandingDue && (
+                        <div className="flex flex-col gap-1 pb-1 mb-1 border-b border-border">
+                          <p className="text-foreground font-medium">Billing option</p>
                           <label className="inline-flex items-center gap-2">
                             <input
                               type="radio"
@@ -876,7 +883,7 @@ const POSBilling = () => {
                 <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                   <button
                     onClick={() => handleCheckout("cash")}
-                    disabled={cart.length === 0}
+                    disabled={!canCheckout}
                     className="flex flex-col items-center gap-0.5 sm:gap-1 py-2.5 sm:py-3 rounded-md bg-success text-success-foreground text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity touch-manipulation"
                   >
                     <Banknote className="h-4 w-4" />
@@ -884,7 +891,7 @@ const POSBilling = () => {
                   </button>
                   <button
                     onClick={() => handleCheckout("card")}
-                    disabled={cart.length === 0}
+                    disabled={!canCheckout}
                     className="flex flex-col items-center gap-0.5 sm:gap-1 py-2.5 sm:py-3 rounded-md bg-primary text-primary-foreground text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity touch-manipulation"
                   >
                     <CreditCard className="h-4 w-4" />
@@ -892,7 +899,7 @@ const POSBilling = () => {
                   </button>
                   <button
                     onClick={() => handleCheckout("online")}
-                    disabled={cart.length === 0}
+                    disabled={!canCheckout}
                     className="flex flex-col items-center gap-0.5 sm:gap-1 py-2.5 sm:py-3 rounded-md bg-secondary text-secondary-foreground text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity border border-border touch-manipulation"
                   >
                     <Globe className="h-4 w-4" />
