@@ -14,6 +14,12 @@ const PROD_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com";
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "") || PROD_API_BASE;
 const REPORTS_API_BASE = `${API_BASE}/reports.php`;
 
+const getTransactionCustomerName = (tx: any): string => {
+  const rawName = tx?.customerName ?? tx?.customer_name ?? "";
+  const name = String(rawName).trim();
+  return name || "Walk-in Customer";
+};
+
 const Reports = () => {
   const [period, setPeriod] = useState<Period>("weekly");
   const [fromDate, setFromDate] = useState("");
@@ -81,7 +87,24 @@ const Reports = () => {
             commissionEarned: Number(e.commission_earned ?? e.commissionEarned ?? 0),
           }))
         );
-        setTransactions((data.transactions ?? []) as Transaction[]);
+        const mappedTransactions: Transaction[] = ((data.transactions ?? []) as any[]).map((tx, index) => ({
+          id: String(tx?.id ?? `report-tx-${index}`),
+          customerId: String(tx?.customerId ?? tx?.customer_id ?? "walk-in"),
+          customerName: getTransactionCustomerName(tx),
+          items: Array.isArray(tx?.items) ? tx.items : [],
+          subtotal: Number(tx?.subtotal ?? 0),
+          discount: Number(tx?.discount ?? 0),
+          tax: Number(tx?.tax ?? 0),
+          total: Number(tx?.total ?? 0),
+          paymentMethod: (tx?.paymentMethod ?? tx?.payment_method ?? "cash") as "cash" | "card" | "online",
+          date: String(tx?.date ?? ""),
+          invoiceNumber: String(tx?.invoiceNumber ?? tx?.invoice_number ?? ""),
+          paidAmount: Number(tx?.paidAmount ?? tx?.paid_amount ?? 0),
+          remainingBalance: Number(tx?.remainingBalance ?? tx?.remaining_balance ?? 0),
+          paymentStatus: (tx?.paymentStatus ?? tx?.payment_status ?? "paid") as "paid" | "partial" | "unpaid",
+          paymentBreakdown: tx?.paymentBreakdown ?? tx?.payment_breakdown_json ?? null,
+        }));
+        setTransactions(mappedTransactions);
         setExpenses((data.expenses ?? []) as Array<{ id: string; title: string; amount: number; expense_date: string; payment_method: string }>);
         setTotalExpenses(Number(data.totalExpenses ?? 0));
         setNetProfitLoss(Number(data.netProfitLoss ?? 0));

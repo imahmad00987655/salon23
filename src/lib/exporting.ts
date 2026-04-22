@@ -615,7 +615,7 @@ const PRINT_HTML = (title: string, bodyHtml: string) => `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=80mm, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)}</title>
     <style>${PRINT_STYLES}</style>
   </head>

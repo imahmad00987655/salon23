@@ -206,7 +206,8 @@ const POSBilling = () => {
   useEffect(() => {
     if (!selectedCustomer) {
       setCustomerBalanceSummary(null);
-      setBillingMode(null);
+      // Walk-in does not have due-balance lookup, so keep invoice mode active.
+      setBillingMode("new_invoice");
       return;
     }
     setBillingMode(null);
