@@ -125,6 +125,7 @@ const Reports = () => {
     if (toDate && t.date > toDate) return false;
     return true;
   });
+  const revenueCategoryChartHeight = Math.max(256, revenueCategories.length * 44);
 
   const exportSalesCsv = () => {
     const rows: any[] = filteredTransactions.length ? filteredTransactions : transactions;
@@ -390,12 +391,20 @@ const Reports = () => {
         {/* Revenue by category */}
         <div className="bg-card border border-border rounded-lg p-5">
           <h2 className="text-sm font-heading font-semibold text-card-foreground mb-4">Revenue by Category</h2>
-          <div className="h-64">
+          <div style={{ height: revenueCategoryChartHeight }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueCategories} layout="vertical">
+              <BarChart data={revenueCategories} layout="vertical" margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis type="number" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={60} />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={0}
+                  width={140}
+                />
                 <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "13px" }} formatter={(value: number) => [`Rs. ${Number(value).toFixed(2)}`, "Revenue"]} />
                 <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
               </BarChart>
