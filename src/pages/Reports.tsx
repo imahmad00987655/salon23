@@ -128,25 +128,69 @@ const Reports = () => {
 
   const printReport = () => {
     const title = `Reports (${period})`;
+    const reportRange = `${fromDate || "Auto"} to ${toDate || "Auto"}`;
+    const salesRows = (filteredTransactions.length ? filteredTransactions : transactions)
+      .map((t) => `<tr><td>${t.date}</td><td>${t.customerName}</td><td class="right">Rs. ${Number(t.total ?? 0).toFixed(2)}</td></tr>`)
+      .join("");
+    const revenueRows = revenueCategories
+      .map((r) => `<tr><td>${r.name}</td><td class="right">Rs. ${Number(r.value).toLocaleString()}</td></tr>`)
+      .join("");
+    const expenseRows = expenses
+      .map((e) => `<tr><td>${e.expense_date}</td><td>${e.title}</td><td>${e.payment_method}</td><td class="right">Rs. ${Number(e.amount ?? 0).toFixed(2)}</td></tr>`)
+      .join("");
+    const employeeRows = employeePerf
+      .map(
+        (e) =>
+          `<tr><td>${e.name}</td><td>${e.role.replace("_", " ")}</td><td class="right">${e.servicesPerformed}</td><td class="right">Rs. ${Number(e.revenueGenerated).toLocaleString()}</td><td class="right">Rs. ${Number(e.commissionEarned).toLocaleString()}</td></tr>`
+      )
+      .join("");
     const body = `
       <h1>${title}</h1>
       <p class="muted">Generated ${new Date().toLocaleString()}</p>
+      <p class="muted">Range: ${reportRange} | Revenue Filter: ${paymentType} | Expense Filter: ${expensePaymentType}</p>
+      <h2>Summary</h2>
+      <table>
+        <tbody>
+          <tr><td>Total Revenue</td><td class="right">Rs. ${totalRevenue.toFixed(2)}</td></tr>
+          <tr><td>Total Expenses</td><td class="right">Rs. ${totalExpenses.toFixed(2)}</td></tr>
+          <tr><td><strong>Net Profit / Loss</strong></td><td class="right"><strong>Rs. ${netProfitLoss.toFixed(2)}</strong></td></tr>
+        </tbody>
+      </table>
+      <h2>Revenue Payment Split</h2>
+      <table>
+        <tbody>
+          <tr><td>Cash</td><td class="right">Rs. ${revenueByPaymentType.cash.toFixed(2)}</td></tr>
+          <tr><td>Online</td><td class="right">Rs. ${revenueByPaymentType.online.toFixed(2)}</td></tr>
+          <tr><td>Card</td><td class="right">Rs. ${revenueByPaymentType.card.toFixed(2)}</td></tr>
+        </tbody>
+      </table>
+      <h2>Expense Payment Split</h2>
+      <table>
+        <tbody>
+          <tr><td>Cash</td><td class="right">Rs. ${expensesByPaymentType.cash.toFixed(2)}</td></tr>
+          <tr><td>Online</td><td class="right">Rs. ${expensesByPaymentType.online.toFixed(2)}</td></tr>
+          <tr><td>Card</td><td class="right">Rs. ${expensesByPaymentType.card.toFixed(2)}</td></tr>
+        </tbody>
+      </table>
       <h2>Sales (by invoice)</h2>
       <table>
         <thead><tr><th>Date</th><th class="right">Customer</th><th class="right">Total</th></tr></thead>
         <tbody>
-          ${(filteredTransactions.length ? filteredTransactions : transactions)
-            .map((t) => `<tr><td>${t.date}</td><td>${t.customerName}</td><td class="right">Rs. ${Number(t.total ?? 0).toFixed(2)}</td></tr>`)
-            .join("")}
+          ${salesRows || '<tr><td colspan="3" class="right">No sales data.</td></tr>'}
         </tbody>
       </table>
       <h2>Revenue by Category</h2>
       <table>
         <thead><tr><th>Name</th><th class="right">Revenue</th></tr></thead>
         <tbody>
-          ${revenueCategories
-            .map((r) => `<tr><td>${r.name}</td><td class="right">Rs. ${Number(r.value).toLocaleString()}</td></tr>`)
-            .join("")}
+          ${revenueRows || '<tr><td colspan="2" class="right">No category data.</td></tr>'}
+        </tbody>
+      </table>
+      <h2>Expenses</h2>
+      <table>
+        <thead><tr><th>Date</th><th>Title</th><th>Payment</th><th class="right">Amount</th></tr></thead>
+        <tbody>
+          ${expenseRows || '<tr><td colspan="4" class="right">No expense data.</td></tr>'}
         </tbody>
       </table>
       ${
@@ -156,12 +200,7 @@ const Reports = () => {
       <table>
         <thead><tr><th>Employee</th><th>Role</th><th class="right">Services</th><th class="right">Revenue</th><th class="right">Commission</th></tr></thead>
         <tbody>
-          ${employeePerf
-            .map(
-              (e) =>
-                `<tr><td>${e.name}</td><td>${e.role.replace("_", " ")}</td><td class="right">${e.servicesPerformed}</td><td class="right">Rs. ${Number(e.revenueGenerated).toLocaleString()}</td><td class="right">Rs. ${Number(e.commissionEarned).toLocaleString()}</td></tr>`
-            )
-            .join("")}
+          ${employeeRows || '<tr><td colspan="5" class="right">No employee data.</td></tr>'}
         </tbody>
       </table>`
           : ""
