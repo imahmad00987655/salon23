@@ -215,11 +215,15 @@ const POSBilling = () => {
         const res = await fetch(`${API_BASE}/customer_balances.php?customerId=${encodeURIComponent(selectedCustomer)}`);
         if (!res.ok) return;
         const data = await res.json();
+        const remaining = Number(data?.summary?.remaining_balance ?? 0);
         setCustomerBalanceSummary({
           total_amount: Number(data?.summary?.total_amount ?? 0),
           paid_amount: Number(data?.summary?.paid_amount ?? 0),
-          remaining_balance: Number(data?.summary?.remaining_balance ?? 0),
+          remaining_balance: remaining,
         });
+        if (remaining <= 0) {
+          setBillingMode("new_invoice");
+        }
       } catch {
         setCustomerBalanceSummary(null);
       }
