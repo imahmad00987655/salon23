@@ -15,6 +15,7 @@ const Expenses = () => {
   const [editing, setEditing] = useState<Expense | null>(null);
 
   const canEditDelete = user?.role === "admin" || user?.role === "super_admin";
+  const canAccessDate = user?.role !== "manager";
 
   type ExpenseFilterMode = "daily" | "weekly" | "monthly" | "custom";
   const [filterMode, setFilterMode] = useState<ExpenseFilterMode>("monthly");
@@ -54,6 +55,8 @@ const Expenses = () => {
   }, []);
 
   const filteredExpenses = useMemo(() => {
+    if (!canAccessDate) return expenses;
+
     const ymd = (d: Date) => d.toISOString().slice(0, 10);
     const today = new Date();
 
@@ -83,7 +86,7 @@ const Expenses = () => {
       if (to && d > to) return false;
       return true;
     });
-  }, [customFrom, customTo, expenses, filterMode]);
+  }, [canAccessDate, customFrom, customTo, expenses, filterMode]);
 
   const totalAmount = useMemo(
     () => filteredExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0),
@@ -109,12 +112,17 @@ const Expenses = () => {
   const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const defaultDate = new Date().toISOString().slice(0, 10);
+    const submittedDate = String(fd.get("expenseDate") ?? "").trim();
+    const resolvedExpenseDate = canAccessDate
+      ? submittedDate || editing?.expenseDate || defaultDate
+      : editing?.expenseDate || defaultDate;
     const payload = {
       title: String(fd.get("title") ?? "").trim(),
       amount: Number(fd.get("amount") ?? 0),
       notes: String(fd.get("notes") ?? "").trim(),
       paymentMethod: String(fd.get("paymentMethod") ?? "cash").trim().toLowerCase(),
-      expenseDate: String(fd.get("expenseDate") ?? "").trim(),
+      expenseDate: resolvedExpenseDate,
     };
 
     const submit = async () => {
@@ -200,70 +208,71 @@ const Expenses = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-muted-foreground" htmlFor="expense-filter">
-            Filter
-          </label>
-          <select
-            id="expense-filter"
-            value={filterMode}
-            onChange={(e) => setFilterMode(e.target.value as ExpenseFilterMode)}
-            className="px-3 py-2 bg-card text-foreground rounded-md border border-border text-sm"
-          >
-            <option value="weekly">Weekly</option>
-            <option value="daily">Daily</option>
-            <option value="monthly">Monthly</option>
-            <option value="custom">Custom</option>
-          </select>
-        </div>
-
-        {filterMode === "custom" && (
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
-              <label htmlFor="expense-from" className="text-xs text-muted-foreground">
-                From
-              </label>
-              <input
-                id="expense-from"
-                type="date"
-                value={customFrom}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="expense-to" className="text-xs text-muted-foreground">
-                To
-              </label>
-              <input
-                id="expense-to"
-                type="date"
-                value={customTo}
-                onChange={(e) => setCustomTo(e.target.value)}
-                className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCustomFrom("");
-                setCustomTo("");
-              }}
-              className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-md text-xs md:text-sm border border-border hover:bg-accent transition-colors"
+      {canAccessDate && (
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-muted-foreground" htmlFor="expense-filter">
+              Filter
+            </label>
+            <select
+              id="expense-filter"
+              value={filterMode}
+              onChange={(e) => setFilterMode(e.target.value as ExpenseFilterMode)}
+              className="px-3 py-2 bg-card text-foreground rounded-md border border-border text-sm"
             >
-              Clear
-            </button>
+              <option value="weekly">Weekly</option>
+              <option value="daily">Daily</option>
+              <option value="monthly">Monthly</option>
+              <option value="custom">Custom</option>
+            </select>
           </div>
-        )}
-      </div>
+
+          {filterMode === "custom" && (
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-1">
+                <label htmlFor="expense-from" className="text-xs text-muted-foreground">
+                  From
+                </label>
+                <input
+                  id="expense-from"
+                  type="date"
+                  value={customFrom}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="expense-to" className="text-xs text-muted-foreground">
+                  To
+                </label>
+                <input
+                  id="expense-to"
+                  type="date"
+                  value={customTo}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomFrom("");
+                  setCustomTo("");
+                }}
+                className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-md text-xs md:text-sm border border-border hover:bg-accent transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
         <table className="w-full text-sm min-w-[700px]">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left py-3 px-4 text-muted-foreground font-medium">Date</th>
+              {canAccessDate && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Date</th>}
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Title</th>
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Notes</th>
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Created By</th>
@@ -275,7 +284,7 @@ const Expenses = () => {
           <tbody>
             {filteredExpenses.map((item) => (
               <tr key={item.id} className="border-b border-border last:border-0 hover:bg-accent/50">
-                <td className="py-3 px-4 text-foreground">{item.expenseDate || "—"}</td>
+                {canAccessDate && <td className="py-3 px-4 text-foreground">{item.expenseDate || "—"}</td>}
                 <td className="py-3 px-4 text-foreground font-medium">{item.title}</td>
                 <td className="py-3 px-4 text-muted-foreground">{item.notes || "—"}</td>
                 <td className="py-3 px-4 text-muted-foreground">{item.createdByName || "—"}</td>
@@ -312,7 +321,7 @@ const Expenses = () => {
             ))}
             {filteredExpenses.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-muted-foreground">
+                <td colSpan={canAccessDate ? 7 : 6} className="py-12 text-center text-muted-foreground">
                   No expense entries for selected filter
                 </td>
               </tr>
@@ -364,19 +373,21 @@ const Expenses = () => {
                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="expense-date" className="text-sm text-muted-foreground">
-                    Date <span className="text-destructive">*</span>
-                  </label>
-                  <input
-                    id="expense-date"
-                    name="expenseDate"
-                    type="date"
-                    required
-                    defaultValue={editing?.expenseDate || new Date().toISOString().slice(0, 10)}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm"
-                  />
-                </div>
+                {canAccessDate && (
+                  <div className="space-y-1.5">
+                    <label htmlFor="expense-date" className="text-sm text-muted-foreground">
+                      Date <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      id="expense-date"
+                      name="expenseDate"
+                      type="date"
+                      required
+                      defaultValue={editing?.expenseDate || new Date().toISOString().slice(0, 10)}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm"
+                    />
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <label htmlFor="expense-paymentMethod" className="text-sm text-muted-foreground">
                     Payment Method <span className="text-destructive">*</span>

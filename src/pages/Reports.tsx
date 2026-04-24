@@ -28,7 +28,7 @@ const Reports = () => {
   const [expensePaymentType, setExpensePaymentType] = useState<"all" | "cash" | "online" | "card">("all");
   const { user } = useAuth();
   const canExport = user?.role === "super_admin" || user?.role === "manager" || user?.role === "cashier";
-  const canViewEmployeeSales = user?.role === "super_admin" || user?.role === "admin" || user?.role === "manager";
+  const canViewEmployeeSales = user?.role === "super_admin" || user?.role === "admin";
   const [salesData, setSalesData] = useState<SalesPoint[]>([]);
   const [revenueCategories, setRevenueCategories] = useState<RevenueCategory[]>([]);
   const [employeePerf, setEmployeePerf] = useState<EmployeePerf[]>([]);
