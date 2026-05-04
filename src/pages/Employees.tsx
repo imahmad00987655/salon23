@@ -389,7 +389,7 @@ const Employees = () => {
                   id="employee-commissionRate"
                   name="commissionRate"
                   type="number"
-                  defaultValue={editing?.commissionRate || 10}
+                  defaultValue={editing?.commissionRate ?? 0}
                   required
                   className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 />

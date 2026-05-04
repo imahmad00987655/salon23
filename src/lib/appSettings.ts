@@ -4,7 +4,7 @@ export type AppSettings = {
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  taxRate: 0.08,
+  taxRate: 0,
   invoicePrefix: "SALON-",
 };
 
