@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Customer } from "@/types/pos";
 import { Search, Plus, Phone, Mail, Calendar, X } from "lucide-react";
+import { getApiOrigin } from "@/lib/apiBase";
 
-const API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/customers.php";
+const API_BASE = `${getApiOrigin()}/customers.php`;
 
 const Customers = () => {
   const [customerList, setCustomerList] = useState<Customer[]>([]);

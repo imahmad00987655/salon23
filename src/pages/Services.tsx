@@ -3,12 +3,12 @@ import { Service, ServiceCategory } from "@/types/pos";
 import { Plus, Search, X, Clock, ImagePlus, ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
+import { getApiOrigin } from "@/lib/apiBase";
 
-const PROD_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com";
-const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "") || PROD_API_BASE;
+const API_BASE = getApiOrigin();
 const SERVICES_API_BASE = `${API_BASE}/services.php`;
 const CATEGORIES_API_BASE = `${API_BASE}/categories.php`;
-const UPLOADS_BASE = PROD_API_BASE;
+const UPLOADS_BASE = API_BASE;
 
 const Services = () => {
   const NO_CATEGORY_ID = "none";

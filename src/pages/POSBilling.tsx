@@ -5,20 +5,20 @@ import { X, Minus, Plus, Search, CreditCard, Banknote, Globe, FileText, Printer,
 import { AnimatePresence, motion } from "framer-motion";
 import { CustomerSearch } from "@/components/CustomerSearch";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
+import { getApiOrigin } from "@/lib/apiBase";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "@/lib/appSettings";
 import { DEFAULT_DISCOUNTS, DISCOUNTS_STORAGE_KEY } from "@/lib/discounts";
 import { openPrintWindow, buildProfessionalInvoiceHtml } from "@/lib/exporting";
 import { useAuth } from "@/contexts/AuthContext";
 
-const PROD_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com";
-const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "") || PROD_API_BASE;
+const API_BASE = getApiOrigin();
 const TRANSACTIONS_API_BASE = `${API_BASE}/transactions.php`;
 const SERVICES_API_BASE = `${API_BASE}/services.php`;
 const CUSTOMERS_API_BASE = `${API_BASE}/customers.php`;
 const EMPLOYEES_API_BASE = `${API_BASE}/employees.php`;
 const PACKAGES_API_BASE = `${API_BASE}/packages.php`;
 const DISCOUNTS_API_BASE = `${API_BASE}/discounts.php`;
-const SERVICE_IMAGE_BASE = PROD_API_BASE;
+const SERVICE_IMAGE_BASE = API_BASE;
 
 const POSBilling = () => {
   const { user } = useAuth();

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getApiOrigin } from "@/lib/apiBase";
 
 type CustomerBalance = {
   customer_id: string;
@@ -9,7 +10,7 @@ type CustomerBalance = {
   invoice_count: number;
 };
 
-const API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/customer_balances.php";
+const API_BASE = `${getApiOrigin()}/customer_balances.php`;
 
 const CustomerBalances = () => {
   const [rows, setRows] = useState<CustomerBalance[]>([]);

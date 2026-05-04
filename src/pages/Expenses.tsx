@@ -3,8 +3,9 @@ import { Expense } from "@/types/pos";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { downloadCsv } from "@/lib/exporting";
+import { getApiOrigin } from "@/lib/apiBase";
 
-const EXPENSES_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/expenses.php";
+const EXPENSES_API_BASE = `${getApiOrigin()}/expenses.php`;
 
 const Expenses = () => {
   const { user } = useAuth();

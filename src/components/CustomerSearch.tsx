@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { Search, User, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Customer } from "@/types/pos";
+import { getApiOrigin } from "@/lib/apiBase";
 
-const CUSTOMERS_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/customers.php";
+const CUSTOMERS_API_BASE = `${getApiOrigin()}/customers.php`;
 
 interface CustomerSearchProps {
   selectedCustomerId: string | null;

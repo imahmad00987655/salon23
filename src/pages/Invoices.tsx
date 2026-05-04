@@ -4,8 +4,9 @@ import { Search, FileText, Download, Eye, X, Printer, Pencil, Trash2 } from "luc
 import { cn } from "@/lib/utils";
 import { openPrintWindow, buildProfessionalInvoiceHtml, downloadCsv } from "@/lib/exporting";
 import { useAuth } from "@/contexts/AuthContext";
+import { getApiOrigin } from "@/lib/apiBase";
 
-const TRANSACTIONS_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/transactions.php";
+const TRANSACTIONS_API_BASE = `${getApiOrigin()}/transactions.php`;
 
 const Invoices = () => {
   const { user } = useAuth();

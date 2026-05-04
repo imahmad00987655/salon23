@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { getApiOrigin } from "@/lib/apiBase";
 
 export type UserRole = "admin" | "super_admin" | "manager" | "cashier";
 
@@ -9,7 +10,7 @@ export interface AppUser {
   email: string;
 }
 
-const AUTH_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/auth.php";
+const AUTH_API_BASE = `${getApiOrigin()}/auth.php`;
 
 // Permission map per role
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {

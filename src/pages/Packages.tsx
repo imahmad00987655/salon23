@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Package, Service } from "@/types/pos";
 import { Plus, X, Gift } from "lucide-react";
+import { getApiOrigin } from "@/lib/apiBase";
 
-const PACKAGES_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/packages.php";
-const SERVICES_API_BASE = "https://mediumorchid-emu-182487.hostingersite.com/services.php";
+const API_ORIGIN = getApiOrigin();
+const PACKAGES_API_BASE = `${API_ORIGIN}/packages.php`;
+const SERVICES_API_BASE = `${API_ORIGIN}/services.php`;
 
 const Packages = () => {
   const [packageList, setPackageList] = useState<Package[]>([]);
