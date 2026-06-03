@@ -273,7 +273,7 @@ const Expenses = () => {
         <table className="w-full text-sm min-w-[700px]">
           <thead>
             <tr className="border-b border-border">
-              {canAccessDate && <th className="text-left py-3 px-4 text-muted-foreground font-medium">Date</th>}
+              <th className="text-left py-3 px-4 text-muted-foreground font-medium">Date</th>
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Title</th>
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Notes</th>
               <th className="text-left py-3 px-4 text-muted-foreground font-medium">Created By</th>
@@ -285,7 +285,7 @@ const Expenses = () => {
           <tbody>
             {filteredExpenses.map((item) => (
               <tr key={item.id} className="border-b border-border last:border-0 hover:bg-accent/50">
-                {canAccessDate && <td className="py-3 px-4 text-foreground">{item.expenseDate || "—"}</td>}
+                <td className="py-3 px-4 text-foreground">{item.expenseDate || "—"}</td>
                 <td className="py-3 px-4 text-foreground font-medium">{item.title}</td>
                 <td className="py-3 px-4 text-muted-foreground">{item.notes || "—"}</td>
                 <td className="py-3 px-4 text-muted-foreground">{item.createdByName || "—"}</td>
@@ -322,7 +322,7 @@ const Expenses = () => {
             ))}
             {filteredExpenses.length === 0 && (
               <tr>
-                <td colSpan={canAccessDate ? 7 : 6} className="py-12 text-center text-muted-foreground">
+                <td colSpan={7} className="py-12 text-center text-muted-foreground">
                   No expense entries for selected filter
                 </td>
               </tr>
