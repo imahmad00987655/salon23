@@ -13,6 +13,7 @@ type RevenueCategory = { name: string; value: number };
 type EmployeePerf = Pick<Employee, "id" | "name" | "role" | "servicesPerformed" | "revenueGenerated" | "commissionEarned">;
 const API_BASE = getApiOrigin();
 const REPORTS_API_BASE = `${API_BASE}/reports.php`;
+const REPORTS_DEFAULT_FROM = "2000-01-01";
 
 const getTransactionCustomerName = (tx: any): string => {
   const rawName = tx?.customerName ?? tx?.customer_name ?? "";
@@ -44,8 +45,9 @@ const Reports = () => {
     const load = async () => {
       try {
         const params = new URLSearchParams();
-        if (fromDate) params.append("from", fromDate);
-        if (toDate) params.append("to", toDate);
+        const defaultTo = new Date().toISOString().slice(0, 10);
+        params.append("from", fromDate || REPORTS_DEFAULT_FROM);
+        params.append("to", toDate || defaultTo);
         if (paymentType !== "all") params.append("paymentType", paymentType);
         if (expensePaymentType !== "all") params.append("expensePaymentType", expensePaymentType);
         const res = await fetch(`${REPORTS_API_BASE}${params.toString() ? `?${params.toString()}` : ""}`);
