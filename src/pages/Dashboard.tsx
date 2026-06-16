@@ -9,6 +9,7 @@ import { getApiOrigin } from "@/lib/apiBase";
 const API_ORIGIN = getApiOrigin();
 const STATS_API_BASE = `${API_ORIGIN}/stats.php`;
 const REPORTS_API_BASE = `${API_ORIGIN}/reports.php`;
+const OVERALL_FROM_DATE = "2000-01-01";
 
 type RevenueCategory = { name: string; value: number; color?: string };
 
@@ -46,7 +47,9 @@ const Dashboard = () => {
           params.set("paymentType", paymentLov);
         }
         const statsUrl = `${STATS_API_BASE}${params.toString() ? `?${params.toString()}` : ""}`;
-        const [statsRes, reportsRes] = await Promise.all([fetch(statsUrl), fetch(REPORTS_API_BASE)]);
+        const overallTo = new Date().toISOString().slice(0, 10);
+        const reportsUrl = `${REPORTS_API_BASE}?from=${OVERALL_FROM_DATE}&to=${overallTo}`;
+        const [statsRes, reportsRes] = await Promise.all([fetch(statsUrl), fetch(reportsUrl)]);
         if (!statsRes.ok) return;
         const data = await statsRes.json();
         const reportsData = reportsRes.ok ? await reportsRes.json() : null;
