@@ -6,7 +6,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiOrigin } from "@/lib/apiBase";
 
-const STATS_API_BASE = `${getApiOrigin()}/stats.php`;
+const API_ORIGIN = getApiOrigin();
+const STATS_API_BASE = `${API_ORIGIN}/stats.php`;
+const REPORTS_API_BASE = `${API_ORIGIN}/reports.php`;
 
 type RevenueCategory = { name: string; value: number; color?: string };
 
@@ -18,12 +20,12 @@ const Dashboard = () => {
   const [todayExpenses, setTodayExpenses] = useState(0);
   const [todayNet, setTodayNet] = useState(0);
   const [cashInHand, setCashInHand] = useState(0);
-  const [paymentBreakdown, setPaymentBreakdown] = useState<{ cash: number; online: number; card: number }>({
+  const [overallPaymentBreakdown, setOverallPaymentBreakdown] = useState<{ cash: number; online: number; card: number }>({
     cash: 0,
     online: 0,
     card: 0,
   });
-  const [expenseBreakdown, setExpenseBreakdown] = useState<{ cash: number; online: number; card: number }>({
+  const [overallExpenseBreakdown, setOverallExpenseBreakdown] = useState<{ cash: number; online: number; card: number }>({
     cash: 0,
     online: 0,
     card: 0,
@@ -43,23 +45,25 @@ const Dashboard = () => {
         if (paymentLov !== "all") {
           params.set("paymentType", paymentLov);
         }
-        const res = await fetch(`${STATS_API_BASE}${params.toString() ? `?${params.toString()}` : ""}`);
-        if (!res.ok) return;
-        const data = await res.json();
+        const statsUrl = `${STATS_API_BASE}${params.toString() ? `?${params.toString()}` : ""}`;
+        const [statsRes, reportsRes] = await Promise.all([fetch(statsUrl), fetch(REPORTS_API_BASE)]);
+        if (!statsRes.ok) return;
+        const data = await statsRes.json();
+        const reportsData = reportsRes.ok ? await reportsRes.json() : null;
 
         setTodayRevenue(Number(data.todayRevenue ?? 0));
         setTodayExpenses(Number(data.todayExpenses ?? 0));
         setTodayNet(Number(data.todayNet ?? (Number(data.todayRevenue ?? 0) - Number(data.todayExpenses ?? 0))));
         setCashInHand(Number(data.cashInHand ?? 0));
-        setPaymentBreakdown({
-          cash: Number(data.paymentBreakdown?.cash ?? 0),
-          online: Number(data.paymentBreakdown?.online ?? 0),
-          card: Number(data.paymentBreakdown?.card ?? 0),
+        setOverallPaymentBreakdown({
+          cash: Number(reportsData?.revenueByPaymentType?.cash ?? 0),
+          online: Number(reportsData?.revenueByPaymentType?.online ?? 0),
+          card: Number(reportsData?.revenueByPaymentType?.card ?? 0),
         });
-        setExpenseBreakdown({
-          cash: Number(data.expenseBreakdown?.cash ?? 0),
-          online: Number(data.expenseBreakdown?.online ?? 0),
-          card: Number(data.expenseBreakdown?.card ?? 0),
+        setOverallExpenseBreakdown({
+          cash: Number(reportsData?.expensesByPaymentType?.cash ?? 0),
+          online: Number(reportsData?.expensesByPaymentType?.online ?? 0),
+          card: Number(reportsData?.expensesByPaymentType?.card ?? 0),
         });
         setTotalCustomers(Number(data.totalCustomers ?? 0));
         setServicesToday(Number(data.servicesToday ?? 0));
@@ -165,21 +169,21 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
-          title="Cash (Revenue / Expense / Net)"
-          value={`Rs. ${(paymentBreakdown.cash - expenseBreakdown.cash).toFixed(2)}`}
-          subtitle={`Rs. ${paymentBreakdown.cash.toFixed(2)} / Rs. ${expenseBreakdown.cash.toFixed(2)}`}
+          title="Cash Overall (Revenue / Expense / Net)"
+          value={`Rs. ${(overallPaymentBreakdown.cash - overallExpenseBreakdown.cash).toFixed(2)}`}
+          subtitle={`Rs. ${overallPaymentBreakdown.cash.toFixed(2)} / Rs. ${overallExpenseBreakdown.cash.toFixed(2)}`}
           icon={<DollarSign className="h-5 w-5" />}
         />
         <StatCard
-          title="Online (Revenue / Expense / Net)"
-          value={`Rs. ${(paymentBreakdown.online - expenseBreakdown.online).toFixed(2)}`}
-          subtitle={`Rs. ${paymentBreakdown.online.toFixed(2)} / Rs. ${expenseBreakdown.online.toFixed(2)}`}
+          title="Online Overall (Revenue / Expense / Net)"
+          value={`Rs. ${(overallPaymentBreakdown.online - overallExpenseBreakdown.online).toFixed(2)}`}
+          subtitle={`Rs. ${overallPaymentBreakdown.online.toFixed(2)} / Rs. ${overallExpenseBreakdown.online.toFixed(2)}`}
           icon={<DollarSign className="h-5 w-5" />}
         />
         <StatCard
-          title="Card (Revenue / Expense / Net)"
-          value={`Rs. ${(paymentBreakdown.card - expenseBreakdown.card).toFixed(2)}`}
-          subtitle={`Rs. ${paymentBreakdown.card.toFixed(2)} / Rs. ${expenseBreakdown.card.toFixed(2)}`}
+          title="Card Overall (Revenue / Expense / Net)"
+          value={`Rs. ${(overallPaymentBreakdown.card - overallExpenseBreakdown.card).toFixed(2)}`}
+          subtitle={`Rs. ${overallPaymentBreakdown.card.toFixed(2)} / Rs. ${overallExpenseBreakdown.card.toFixed(2)}`}
           icon={<DollarSign className="h-5 w-5" />}
         />
       </div>
