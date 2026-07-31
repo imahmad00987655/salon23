@@ -104,28 +104,41 @@ const Employees = () => {
     setSelectedRole(editing?.role || roleOptions[0] || "stylist");
   }, [editing, roleOptions]);
 
-  const hasDateFilter = Boolean(fromDate || toDate);
+  const toDateKey = (value: string) => {
+    if (!value) return "";
+    const match = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : String(value).slice(0, 10);
+  };
+
+  // If only one date is filled, treat it as a single-day filter (same as comparing to Invoices for that day)
+  const rangeFrom = fromDate || toDate || "";
+  const rangeTo = toDate || fromDate || "";
+  const hasDateFilter = Boolean(rangeFrom || rangeTo);
 
   /** Per-employee services + revenue from transactions in the selected date range (or all time). */
   const statsByEmployeeId = useMemo(() => {
-    const toDateKey = (value: string) => {
-      if (!value) return "";
-      // Normalize "YYYY-MM-DD..." / ISO timestamps so range compare is reliable
-      const match = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
-      return match ? match[1] : String(value).slice(0, 10);
-    };
-
     const map = new Map<string, { services: number; revenue: number }>();
 
     transactions.forEach((t) => {
       if (hasDateFilter) {
         const key = toDateKey(t.date);
         if (!key) return;
-        if (fromDate && key < fromDate) return;
-        if (toDate && key > toDate) return;
+        if (rangeFrom && key < rangeFrom) return;
+        if (rangeTo && key > rangeTo) return;
       }
 
-      (t.items ?? []).forEach((item) => {
+      const items = t.items ?? [];
+      const itemsSubtotal = items.reduce(
+        (sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 0),
+        0
+      );
+      // Scale line amounts to invoice total so discounts match Invoices "Filtered Total"
+      const invoiceTotal = Number(t.total ?? itemsSubtotal);
+      const scale = itemsSubtotal > 0 ? invoiceTotal / itemsSubtotal : 1;
+
+      items.forEach((item) => {
+        if (String(item.serviceId || "") === "due-payment") return;
+
         const assigned =
           item.assignedEmployees?.length
             ? item.assignedEmployees
@@ -135,15 +148,19 @@ const Employees = () => {
         if (!assigned.length) return;
 
         const qty = Number(item.quantity) || 0;
-        const lineTotal = (Number(item.price) || 0) * qty;
+        if (qty <= 0) return;
+
+        const lineTotal = (Number(item.price) || 0) * qty * scale;
         const share = 1 / assigned.length;
+        const primaryId = String(item.employeeId || assigned[0]?.id || "");
 
         assigned.forEach((a) => {
           const id = String(a.id || "");
           if (!id) return;
           const prev = map.get(id) ?? { services: 0, revenue: 0 };
           map.set(id, {
-            services: prev.services + qty * share,
+            // Whole services for primary only — matches invoice item counts; revenue still split
+            services: prev.services + (id === primaryId ? qty : 0),
             revenue: prev.revenue + lineTotal * share,
           });
         });
@@ -151,18 +168,17 @@ const Employees = () => {
     });
 
     return map;
-  }, [fromDate, toDate, hasDateFilter, transactions]);
+  }, [rangeFrom, rangeTo, hasDateFilter, transactions]);
 
   const getEmployeeStats = (emp: Employee) => {
     const fromTx = statsByEmployeeId.get(emp.id);
     if (fromTx) {
       return {
-        services: Math.round(fromTx.services * 100) / 100,
+        services: fromTx.services,
         revenue: fromTx.revenue,
         commission: (fromTx.revenue * Number(emp.commissionRate ?? 0)) / 100,
       };
     }
-    // No matching transactions in range → zeros when filtering; otherwise API lifetime totals
     if (hasDateFilter) {
       return { services: 0, revenue: 0, commission: 0 };
     }
@@ -183,8 +199,8 @@ const Employees = () => {
     const matchesName = e.name.toLowerCase().includes(search.toLowerCase());
     if (!matchesName) return false;
     if (!hasDateFilter) return true;
-    // Show only employees who had activity in the selected range
-    return (statsByEmployeeId.get(e.id)?.services ?? 0) > 0;
+    const stats = statsByEmployeeId.get(e.id);
+    return (stats?.services ?? 0) > 0 || (stats?.revenue ?? 0) > 0;
   });
 
   const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
