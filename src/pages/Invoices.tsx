@@ -62,6 +62,14 @@ const Invoices = () => {
 
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+  const getItemEmployeeNames = (item: Transaction["items"][number]) => {
+    const assigned = item.assignedEmployees?.filter((a) => a?.name || a?.id) ?? [];
+    if (assigned.length > 0) {
+      return assigned.map((a) => a.name || a.id).join(", ");
+    }
+    return item.employeeName || "-";
+  };
+
   const buildInvoiceHtml = (inv: Transaction) => {
     const items = inv.items ?? [];
     return buildProfessionalInvoiceHtml({
@@ -72,7 +80,7 @@ const Invoices = () => {
       cashierName: user?.name ?? undefined,
       items: items.map((it) => ({
         serviceName: it.serviceName,
-        employeeName: it.employeeName,
+        employeeName: getItemEmployeeNames(it),
         quantity: it.quantity,
         price: it.price,
         total: it.price * it.quantity,
@@ -487,7 +495,7 @@ const Invoices = () => {
                     {selectedInvoice.items.map((item, idx) => (
                       <tr key={idx} className="border-t border-border">
                         <td className="py-2 px-3 text-foreground">{item.serviceName}</td>
-                        <td className="py-2 px-3 text-muted-foreground">{item.employeeName}</td>
+                        <td className="py-2 px-3 text-muted-foreground">{getItemEmployeeNames(item)}</td>
                         <td className="py-2 px-3 text-center text-foreground">{item.quantity}</td>
                         <td className="py-2 px-3 text-right text-foreground">Rs. {(item.price * item.quantity).toFixed(2)}</td>
                       </tr>
