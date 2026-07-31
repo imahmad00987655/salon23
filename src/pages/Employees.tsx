@@ -39,7 +39,19 @@ const Employees = () => {
       setTransactions((raw || []).map((t: any) => ({
         ...t,
         date: t.date || t.transaction_date || "",
-        items: t.items || [],
+        items: (t.items || []).map((item: any) => ({
+          ...item,
+          employeeId: String(item.employeeId ?? item.employee_id ?? ""),
+          employeeName: String(item.employeeName ?? item.employee_name ?? ""),
+          price: Number(item.price ?? 0),
+          quantity: Number(item.quantity ?? 1),
+          assignedEmployees: Array.isArray(item.assignedEmployees ?? item.assigned_employees)
+            ? (item.assignedEmployees ?? item.assigned_employees).map((a: any) => ({
+                id: String(a.id ?? a.employeeId ?? a.employee_id ?? ""),
+                name: String(a.name ?? a.employeeName ?? a.employee_name ?? ""),
+              }))
+            : undefined,
+        })),
       })));
     } catch {
       setTransactions([]);
@@ -92,32 +104,88 @@ const Employees = () => {
     setSelectedRole(editing?.role || roleOptions[0] || "stylist");
   }, [editing, roleOptions]);
 
-  const employeesWithActivityByDate = useMemo(() => {
-    if (!fromDate && !toDate) return null;
-    const activeIds = new Set<string>();
+  const hasDateFilter = Boolean(fromDate || toDate);
+
+  /** Per-employee services + revenue from transactions in the selected date range (or all time). */
+  const statsByEmployeeId = useMemo(() => {
+    const toDateKey = (value: string) => {
+      if (!value) return "";
+      // Normalize "YYYY-MM-DD..." / ISO timestamps so range compare is reliable
+      const match = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+      return match ? match[1] : String(value).slice(0, 10);
+    };
+
+    const map = new Map<string, { services: number; revenue: number }>();
+
     transactions.forEach((t) => {
-      if (fromDate && t.date < fromDate) return;
-      if (toDate && t.date > toDate) return;
-      (t.items ?? []).forEach((item: { employeeId?: string }) => activeIds.add(item.employeeId || ""));
+      if (hasDateFilter) {
+        const key = toDateKey(t.date);
+        if (!key) return;
+        if (fromDate && key < fromDate) return;
+        if (toDate && key > toDate) return;
+      }
+
+      (t.items ?? []).forEach((item) => {
+        const assigned =
+          item.assignedEmployees?.length
+            ? item.assignedEmployees
+            : item.employeeId
+              ? [{ id: item.employeeId, name: item.employeeName || "" }]
+              : [];
+        if (!assigned.length) return;
+
+        const qty = Number(item.quantity) || 0;
+        const lineTotal = (Number(item.price) || 0) * qty;
+        const share = 1 / assigned.length;
+
+        assigned.forEach((a) => {
+          const id = String(a.id || "");
+          if (!id) return;
+          const prev = map.get(id) ?? { services: 0, revenue: 0 };
+          map.set(id, {
+            services: prev.services + qty * share,
+            revenue: prev.revenue + lineTotal * share,
+          });
+        });
+      });
     });
-    return activeIds;
-  }, [fromDate, toDate, transactions]);
+
+    return map;
+  }, [fromDate, toDate, hasDateFilter, transactions]);
+
+  const getEmployeeStats = (emp: Employee) => {
+    const fromTx = statsByEmployeeId.get(emp.id);
+    if (fromTx) {
+      return {
+        services: Math.round(fromTx.services * 100) / 100,
+        revenue: fromTx.revenue,
+        commission: (fromTx.revenue * Number(emp.commissionRate ?? 0)) / 100,
+      };
+    }
+    // No matching transactions in range → zeros when filtering; otherwise API lifetime totals
+    if (hasDateFilter) {
+      return { services: 0, revenue: 0, commission: 0 };
+    }
+    const revenue = Number(emp.revenueGenerated ?? 0);
+    const fromApi = Number(emp.commissionEarned ?? 0);
+    const commission =
+      Number.isFinite(fromApi) && fromApi > 0
+        ? fromApi
+        : (revenue * Number(emp.commissionRate ?? 0)) / 100;
+    return {
+      services: Number(emp.servicesPerformed ?? 0),
+      revenue,
+      commission: Number.isFinite(commission) ? commission : 0,
+    };
+  };
 
   const filtered = employeeList.filter((e) => {
     const matchesName = e.name.toLowerCase().includes(search.toLowerCase());
     if (!matchesName) return false;
-    if (!employeesWithActivityByDate) return true;
-    return employeesWithActivityByDate.has(e.id);
+    if (!hasDateFilter) return true;
+    // Show only employees who had activity in the selected range
+    return (statsByEmployeeId.get(e.id)?.services ?? 0) > 0;
   });
-
-  const getCommissionEarned = (emp: Employee) => {
-    const fromApi = Number(emp.commissionEarned ?? 0);
-    if (Number.isFinite(fromApi) && fromApi > 0) return fromApi;
-    const revenue = Number(emp.revenueGenerated ?? 0);
-    const rate = Number(emp.commissionRate ?? 0);
-    const computed = (revenue * rate) / 100;
-    return Number.isFinite(computed) ? computed : 0;
-  };
 
   const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -256,23 +324,26 @@ const Employees = () => {
                 {emp.active ? "Active" : "Inactive"}
               </span>
             </div>
-            {canViewEmployeeSales && (
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <p className="text-lg font-heading font-bold text-foreground">{emp.servicesPerformed}</p>
-                  <p className="text-xs text-muted-foreground">Services</p>
+            {canViewEmployeeSales && (() => {
+              const stats = getEmployeeStats(emp);
+              return (
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-lg font-heading font-bold text-foreground">{stats.services}</p>
+                    <p className="text-xs text-muted-foreground">Services</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-heading font-bold text-foreground">Rs. {stats.revenue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                    <p className="text-xs text-muted-foreground">Revenue</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-heading font-bold text-foreground">Rs. {stats.commission.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                    <p className="text-xs text-muted-foreground">Commission Earned</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{emp.commissionRate}% rate</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-lg font-heading font-bold text-foreground">Rs. {emp.revenueGenerated.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">Revenue</p>
-                </div>
-                <div>
-                  <p className="text-lg font-heading font-bold text-foreground">Rs. {getCommissionEarned(emp).toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">Commission Earned</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{emp.commissionRate}% rate</p>
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         ))}
       </div>
