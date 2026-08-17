@@ -611,6 +611,107 @@ export function buildProfessionalInvoiceHtml(options: ProfessionalInvoiceOptions
   `;
 }
 
+export type MembershipInvoiceOptions = {
+  invoiceNumber: string;
+  customerName: string;
+  customerPhone?: string;
+  membershipName: string;
+  startDate: string;
+  endDate: string;
+  durationMonths: number;
+  discountPercent: number;
+  price: number;
+  paidAmount: number;
+  paymentStatus: string;
+  terms?: string;
+  services: Array<{
+    serviceName: string;
+    quantity: number | null;
+    servicePrice?: number;
+  }>;
+};
+
+function formatQtyLabel(qty: number | null | undefined) {
+  if (qty === null || qty === undefined) return "Not included";
+  if (Number(qty) === 0) return "Unlimited";
+  return String(qty);
+}
+
+export function buildMembershipInvoiceHtml(options: MembershipInvoiceOptions): string {
+  const included = (options.services || []).filter(
+    (s) => s.quantity !== null && s.quantity !== undefined
+  );
+  const serviceRows = included
+    .map(
+      (s) => `
+      <tr>
+        <td class="col-service"><span class="service-name">${escapeHtml(s.serviceName)}</span></td>
+        <td class="col-qty">${escapeHtml(formatQtyLabel(s.quantity))}</td>
+        <td class="col-amount">${escapeHtml(formatPKR(Number(s.servicePrice || 0)))}</td>
+      </tr>`
+    )
+    .join("");
+
+  return `
+    <div class="receipt">
+      <div class="invoice-header">
+        <div class="brand-name">Sheeza Saloon</div>
+        <div class="invoice-title">Membership Invoice</div>
+      </div>
+      <div class="separator-strong"></div>
+      <div class="meta">
+        <div><strong>Invoice:</strong> ${escapeHtml(options.invoiceNumber)}</div>
+        <div><strong>Customer:</strong> ${escapeHtml(options.customerName)}</div>
+        ${options.customerPhone ? `<div><strong>Phone:</strong> ${escapeHtml(options.customerPhone)}</div>` : ""}
+        <div><strong>Membership:</strong> ${escapeHtml(options.membershipName)}</div>
+        <div><strong>Duration:</strong> ${escapeHtml(String(options.durationMonths))} months</div>
+        <div><strong>Start:</strong> ${escapeHtml(options.startDate)}</div>
+        <div><strong>End:</strong> ${escapeHtml(options.endDate)}</div>
+        <div><strong>Discount:</strong> ${escapeHtml(String(options.discountPercent))}%</div>
+        <div><strong>Payment:</strong> ${escapeHtml(options.paymentStatus)}</div>
+      </div>
+      <div class="separator"></div>
+      <table class="items-table" width="100%">
+        <thead>
+          <tr>
+            <th class="col-service">Included Service</th>
+            <th class="col-qty">Qty</th>
+            <th class="col-amount">List</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${serviceRows || `<tr><td colspan="3" class="center">No included services</td></tr>`}
+        </tbody>
+      </table>
+      <div class="separator"></div>
+      <table class="totals-table" width="100%">
+        <tr>
+          <td class="totals-label">Membership Price</td>
+          <td class="totals-value">${escapeHtml(formatPKR(options.price))}</td>
+        </tr>
+        <tr>
+          <td class="totals-label">Paid Amount</td>
+          <td class="totals-value">${escapeHtml(formatPKR(options.paidAmount))}</td>
+        </tr>
+        <tr>
+          <td class="totals-label"><strong>Final Amount</strong></td>
+          <td class="totals-value"><strong>${escapeHtml(formatPKR(options.price))}</strong></td>
+        </tr>
+      </table>
+      ${
+        options.terms
+          ? `<div class="separator"></div><div class="footer-note"><strong>Terms:</strong> ${escapeHtml(options.terms)}</div>`
+          : ""
+      }
+      <div class="separator-strong"></div>
+      <div class="footer">
+        <p class="thank-you">Thank You For Your Membership</p>
+        <div class="powered-by">Powered by ZepTechLogix • Software Solutions</div>
+      </div>
+    </div>
+  `;
+}
+
 const PRINT_HTML = (title: string, bodyHtml: string) => `<!doctype html>
 <html>
   <head>
