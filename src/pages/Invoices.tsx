@@ -14,6 +14,7 @@ const Invoices = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<"all" | "paid" | "partial" | "unpaid">("all");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<"all" | "cash" | "card" | "online">("all");
   const [customerFilter, setCustomerFilter] = useState<string>("all");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<Transaction | null>(null);
@@ -21,6 +22,8 @@ const Invoices = () => {
   const [actionError, setActionError] = useState<string | null>(null);
   const isSuperAdmin = user?.role === "super_admin";
   const canEditInvoice = user?.role === "super_admin" || user?.role === "admin" || user?.role === "manager";
+  const canFilterPaymentMethod =
+    user?.role === "super_admin" || user?.role === "admin" || user?.role === "manager";
 
   useEffect(() => {
     loadTransactions();
@@ -37,6 +40,13 @@ const Invoices = () => {
     if (fromDate && t.date < fromDate) return false;
     if (toDate && t.date > toDate) return false;
     if (paymentStatusFilter !== "all" && (t.paymentStatus ?? "paid") !== paymentStatusFilter) return false;
+    if (
+      canFilterPaymentMethod &&
+      paymentMethodFilter !== "all" &&
+      String(t.paymentMethod ?? "").toLowerCase() !== paymentMethodFilter
+    ) {
+      return false;
+    }
     if (customerFilter !== "all" && t.customerId !== customerFilter) return false;
     return true;
   });
@@ -102,6 +112,9 @@ const Invoices = () => {
       if (toDate) params.set("to", toDate);
       if (search.trim()) params.set("search", search.trim());
       if (paymentStatusFilter !== "all") params.set("status", paymentStatusFilter);
+      if (canFilterPaymentMethod && paymentMethodFilter !== "all") {
+        params.set("paymentType", paymentMethodFilter);
+      }
       if (customerFilter !== "all") params.set("customerId", customerFilter);
 
       const res = await fetch(`${TRANSACTIONS_API_BASE}?${params.toString()}`);
@@ -118,7 +131,7 @@ const Invoices = () => {
       void loadTransactions();
     }, 250);
     return () => window.clearTimeout(timeout);
-  }, [search, fromDate, toDate, paymentStatusFilter, customerFilter]);
+  }, [search, fromDate, toDate, paymentStatusFilter, paymentMethodFilter, customerFilter, canFilterPaymentMethod]);
 
   const handleDeleteInvoice = async (tx: Transaction) => {
     if (!isSuperAdmin || !window.confirm(`Delete invoice ${tx.invoiceNumber}? This cannot be undone.`)) return;
@@ -274,6 +287,26 @@ const Invoices = () => {
               <option value="unpaid">Unpaid</option>
             </select>
           </div>
+          {canFilterPaymentMethod && (
+            <div className="space-y-1">
+              <label htmlFor="invoice-payment-method" className="text-muted-foreground">
+                Payment Type
+              </label>
+              <select
+                id="invoice-payment-method"
+                value={paymentMethodFilter}
+                onChange={(e) =>
+                  setPaymentMethodFilter(e.target.value as "all" | "cash" | "card" | "online")
+                }
+                className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
+              >
+                <option value="all">All</option>
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="online">Online</option>
+              </select>
+            </div>
+          )}
           <div className="space-y-1">
             <label htmlFor="invoice-customer" className="text-muted-foreground">
               Customer
