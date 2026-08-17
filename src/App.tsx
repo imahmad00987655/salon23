@@ -14,6 +14,7 @@ const POSBilling = lazy(() => import("./pages/POSBilling"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Services = lazy(() => import("./pages/Services"));
 const Packages = lazy(() => import("./pages/Packages"));
+const Memberships = lazy(() => import("./pages/Memberships"));
 const Discounts = lazy(() => import("./pages/Discounts"));
 const Employees = lazy(() => import("./pages/Employees"));
 const Reports = lazy(() => import("./pages/Reports"));
@@ -54,6 +55,7 @@ function AppRoutes() {
           <Route path="/customers" element={<ProtectedRoute path="/customers"><Customers /></ProtectedRoute>} />
           <Route path="/services" element={<ProtectedRoute path="/services"><Services /></ProtectedRoute>} />
           <Route path="/packages" element={<ProtectedRoute path="/packages"><Packages /></ProtectedRoute>} />
+          <Route path="/memberships" element={<ProtectedRoute path="/memberships"><Memberships /></ProtectedRoute>} />
           <Route path="/discounts" element={<ProtectedRoute path="/discounts"><Discounts /></ProtectedRoute>} />
           <Route path="/employees" element={<ProtectedRoute path="/employees"><Employees /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute path="/reports"><Reports /></ProtectedRoute>} />
