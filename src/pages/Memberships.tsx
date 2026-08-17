@@ -40,7 +40,8 @@ type CategoryServiceRow = {
   serviceId: string;
   serviceName: string;
   servicePrice: string;
-  quantity: string; // "" = not included, "0" = unlimited, number = limited
+  /** "" = not included, "0" = ∞ unlimited for holder, "1"+ = limited */
+  quantity: string;
   shareable: boolean;
 };
 
@@ -278,6 +279,7 @@ const Memberships = () => {
   const [assignEndDate, setAssignEndDate] = useState("");
   const [assignPaymentStatus] = useState<"paid">("paid");
   const [assignPaidAmount, setAssignPaidAmount] = useState("");
+  const [assignPaymentMethod, setAssignPaymentMethod] = useState<"cash" | "card" | "online">("cash");
 
   const addMonthsMinusOneDay = (ymd: string, months: number): string => {
     const d = new Date(`${ymd}T12:00:00`);
@@ -307,6 +309,7 @@ const Memberships = () => {
     setAssignStartDate(new Date().toISOString().slice(0, 10));
     setAssignEndDate("");
     setAssignPaidAmount("");
+    setAssignPaymentMethod("cash");
     setCustomerSearch("");
   };
   const [customerSearch, setCustomerSearch] = useState("");
@@ -563,6 +566,7 @@ const Memberships = () => {
       endDate: assignEndDate || undefined,
       paymentStatus: assignPaymentStatus || "paid",
       paidAmount: Number(assignPaidAmount || 0),
+      paymentMethod: assignPaymentMethod || "cash",
     };
 
     const submit = async () => {
@@ -1085,6 +1089,23 @@ const Memberships = () => {
                   </div>
                 </div>
                 <div className="space-y-1.5">
+                  <label htmlFor="assign-paymentMethod" className="text-sm text-muted-foreground">
+                    Payment type
+                  </label>
+                  <select
+                    id="assign-paymentMethod"
+                    value={assignPaymentMethod}
+                    onChange={(e) =>
+                      setAssignPaymentMethod(e.target.value as "cash" | "card" | "online")
+                    }
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="online">Online</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5 col-span-2">
                   <label htmlFor="assign-paidAmount" className="text-sm text-muted-foreground">
                     Amount (category price)
                   </label>
@@ -1226,7 +1247,8 @@ const Memberships = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <label className="text-sm text-muted-foreground">
-                    Services <span className="text-xs">(select service · qty · shareable per row)</span>
+                    Services{" "}
+                    <span className="text-xs">(select service · qty · shareable per row)</span>
                   </label>
                   <button
                     type="button"
@@ -1236,6 +1258,10 @@ const Memberships = () => {
                     <Plus className="h-3 w-3" /> Add row
                   </button>
                 </div>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Qty: <span className="text-foreground">∞ Infinity</span> = membership holder unlimited use.
+                  Friends only if Share is on (and for ∞ they still pay). Blank = not included. Number = limited pool.
+                </p>
                 <input
                   type="text"
                   value={serviceSearch}
@@ -1251,6 +1277,8 @@ const Memberships = () => {
                       if (!q) return true;
                       return s.name.toLowerCase().includes(q);
                     });
+                    const qtyMode =
+                      row.quantity === "" ? "blank" : row.quantity === "0" ? "infinity" : "limited";
                     return (
                       <div key={idx} className="grid grid-cols-12 gap-1.5 items-center">
                         <select
@@ -1275,18 +1303,52 @@ const Memberships = () => {
                           title="Auto-filled from selected service"
                           className="col-span-2 px-2 py-1.5 bg-secondary/40 border border-border rounded-md text-xs text-muted-foreground"
                         />
-                        <input
-                          type="number"
-                          placeholder="Qty"
-                          min="0"
-                          value={row.quantity}
-                          onChange={(e) => {
-                            const next = [...categoryServiceRows];
-                            next[idx] = { ...next[idx], quantity: e.target.value };
-                            setCategoryServiceRows(next);
-                          }}
-                          className="col-span-2 px-2 py-1.5 bg-card border border-border rounded-md text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                        />
+                        <div className="col-span-2 flex flex-col gap-0.5 min-w-0">
+                          <select
+                            value={qtyMode}
+                            onChange={(e) => {
+                              const mode = e.target.value;
+                              const next = [...categoryServiceRows];
+                              if (mode === "blank") {
+                                next[idx] = { ...next[idx], quantity: "" };
+                              } else if (mode === "infinity") {
+                                next[idx] = { ...next[idx], quantity: "0" };
+                              } else {
+                                const current = Number(next[idx].quantity);
+                                next[idx] = {
+                                  ...next[idx],
+                                  quantity: !current || current <= 0 ? "1" : String(current),
+                                };
+                              }
+                              setCategoryServiceRows(next);
+                            }}
+                            title="Quantity type"
+                            className="w-full px-1 py-1.5 bg-card border border-border rounded-md text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                          >
+                            <option value="blank">—</option>
+                            <option value="infinity">∞ Infinity</option>
+                            <option value="limited">Limited</option>
+                          </select>
+                          {qtyMode === "limited" && (
+                            <input
+                              type="number"
+                              placeholder="Qty"
+                              min="1"
+                              step="1"
+                              value={row.quantity}
+                              onChange={(e) => {
+                                const next = [...categoryServiceRows];
+                                const v = e.target.value;
+                                next[idx] = {
+                                  ...next[idx],
+                                  quantity: v === "" || Number(v) < 1 ? "1" : v,
+                                };
+                                setCategoryServiceRows(next);
+                              }}
+                              className="w-full px-1 py-1 bg-card border border-border rounded-md text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                          )}
+                        </div>
                         <label
                           className="col-span-2 flex items-center justify-center gap-1 text-[11px] text-foreground"
                           title="Friends/Family can redeem this service"

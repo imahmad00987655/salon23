@@ -647,7 +647,6 @@ export function buildMembershipInvoiceHtml(options: MembershipInvoiceOptions): s
       <tr>
         <td class="col-service"><span class="service-name">${escapeHtml(s.serviceName)}</span></td>
         <td class="col-qty">${escapeHtml(formatQtyLabel(s.quantity))}</td>
-        <td class="col-amount">${escapeHtml(formatPKR(Number(s.servicePrice || 0)))}</td>
       </tr>`
     )
     .join("");
@@ -676,25 +675,16 @@ export function buildMembershipInvoiceHtml(options: MembershipInvoiceOptions): s
           <tr>
             <th class="col-service">Included Service</th>
             <th class="col-qty">Qty</th>
-            <th class="col-amount">List</th>
           </tr>
         </thead>
         <tbody>
-          ${serviceRows || `<tr><td colspan="3" class="center">No included services</td></tr>`}
+          ${serviceRows || `<tr><td colspan="2" class="center">No included services</td></tr>`}
         </tbody>
       </table>
       <div class="separator"></div>
       <table class="totals-table" width="100%">
         <tr>
-          <td class="totals-label">Membership Price</td>
-          <td class="totals-value">${escapeHtml(formatPKR(options.price))}</td>
-        </tr>
-        <tr>
-          <td class="totals-label">Paid Amount</td>
-          <td class="totals-value">${escapeHtml(formatPKR(options.paidAmount))}</td>
-        </tr>
-        <tr>
-          <td class="totals-label"><strong>Final Amount</strong></td>
+          <td class="totals-label"><strong>Total</strong></td>
           <td class="totals-value"><strong>${escapeHtml(formatPKR(options.price))}</strong></td>
         </tr>
       </table>

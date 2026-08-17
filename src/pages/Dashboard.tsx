@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DollarSign, Users, Scissors, Star } from "lucide-react";
+import { DollarSign, Users, Scissors, Star, CreditCard } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { Transaction, Employee } from "@/types/pos";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
@@ -34,6 +34,11 @@ const Dashboard = () => {
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [servicesToday, setServicesToday] = useState(0);
   const [activeServicesCount, setActiveServicesCount] = useState(0);
+  const [membershipTodayRevenue, setMembershipTodayRevenue] = useState(0);
+  const [membershipTodayCount, setMembershipTodayCount] = useState(0);
+  const [membershipOverallRevenue, setMembershipOverallRevenue] = useState(0);
+  const [membershipOverallCount, setMembershipOverallCount] = useState(0);
+  const [activeMemberships, setActiveMemberships] = useState(0);
   const [topEmployee, setTopEmployee] = useState<Employee | null>(null);
   const [salesData, setSalesData] = useState<{ date: string; revenue: number }[]>([]);
   const [revenueByCategory, setRevenueByCategory] = useState<RevenueCategory[]>([]);
@@ -71,6 +76,11 @@ const Dashboard = () => {
         setTotalCustomers(Number(data.totalCustomers ?? 0));
         setServicesToday(Number(data.servicesToday ?? 0));
         setActiveServicesCount(Number(data.activeServicesCount ?? 0));
+        setMembershipTodayRevenue(Number(data.membershipTodayRevenue ?? 0));
+        setMembershipTodayCount(Number(data.membershipTodayCount ?? 0));
+        setMembershipOverallRevenue(Number(data.membershipOverallRevenue ?? 0));
+        setMembershipOverallCount(Number(data.membershipOverallCount ?? 0));
+        setActiveMemberships(Number(data.activeMemberships ?? 0));
         setSalesData(Array.isArray(data.salesData) ? data.salesData : []);
         setRevenueByCategory(Array.isArray(data.revenueByCategory) ? data.revenueByCategory : []);
         setRecentTransactions(Array.isArray(data.recentTransactions) ? data.recentTransactions : []);
@@ -159,6 +169,18 @@ const Dashboard = () => {
           value={servicesToday.toString()}
           subtitle={`${activeServicesCount} active services`}
           icon={<Scissors className="h-5 w-5" />}
+        />
+        <StatCard
+          title="Membership Today"
+          value={`Rs. ${Number(membershipTodayRevenue || 0).toFixed(2)}`}
+          subtitle={`${membershipTodayCount} sale${membershipTodayCount === 1 ? "" : "s"} today`}
+          icon={<CreditCard className="h-5 w-5" />}
+        />
+        <StatCard
+          title="Membership Overall"
+          value={`Rs. ${Number(membershipOverallRevenue || 0).toFixed(2)}`}
+          subtitle={`${membershipOverallCount} sale${membershipOverallCount === 1 ? "" : "s"} · ${activeMemberships} active`}
+          icon={<CreditCard className="h-5 w-5" />}
         />
         {canViewEmployeeSales && (
           <StatCard
