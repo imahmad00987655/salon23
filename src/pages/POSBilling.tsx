@@ -18,6 +18,7 @@ const CUSTOMERS_API_BASE = `${API_BASE}/customers.php`;
 const EMPLOYEES_API_BASE = `${API_BASE}/employees.php`;
 const PACKAGES_API_BASE = `${API_BASE}/packages.php`;
 const DISCOUNTS_API_BASE = `${API_BASE}/discounts.php`;
+const MEMBERSHIPS_API_BASE = `${API_BASE}/memberships.php`;
 const SERVICE_IMAGE_BASE = API_BASE;
 
 const POSBilling = () => {
@@ -59,6 +60,14 @@ const POSBilling = () => {
     paid_amount: number;
     remaining_balance: number;
   } | null>(null);
+  const [activeMembership, setActiveMembership] = useState<{
+    id: string;
+    categoryName: string;
+    endDate: string;
+    friends: Array<{ id: string; name: string; phone: string }>;
+  } | null>(null);
+  /** holder = membership customer; otherwise friend id */
+  const [membershipUserKey, setMembershipUserKey] = useState<string>("holder");
 
   useEffect(() => {
     const loadAll = async () => {
@@ -206,11 +215,14 @@ const POSBilling = () => {
   useEffect(() => {
     if (!selectedCustomer) {
       setCustomerBalanceSummary(null);
+      setActiveMembership(null);
+      setMembershipUserKey("holder");
       // Walk-in does not have due-balance lookup, so keep invoice mode active.
       setBillingMode("new_invoice");
       return;
     }
     setBillingMode(null);
+    setMembershipUserKey("holder");
     const loadBalance = async () => {
       try {
         const res = await fetch(`${API_BASE}/customer_balances.php?customerId=${encodeURIComponent(selectedCustomer)}`);
@@ -229,7 +241,39 @@ const POSBilling = () => {
         setCustomerBalanceSummary(null);
       }
     };
+    const loadMembership = async () => {
+      try {
+        const res = await fetch(
+          `${MEMBERSHIPS_API_BASE}?resource=lookup&customerId=${encodeURIComponent(selectedCustomer)}`
+        );
+        if (!res.ok) {
+          setActiveMembership(null);
+          return;
+        }
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data?.memberships ?? (data?.id ? [data] : []);
+        const first = list[0];
+        if (first) {
+          const friendsRaw = Array.isArray(first.friends) ? first.friends : [];
+          setActiveMembership({
+            id: String(first.id),
+            categoryName: String(first.category_name ?? first.categoryName ?? "Membership"),
+            endDate: String(first.end_date ?? first.endDate ?? ""),
+            friends: friendsRaw.map((f: Record<string, unknown>) => ({
+              id: String(f.id),
+              name: String(f.name ?? ""),
+              phone: String(f.phone ?? ""),
+            })),
+          });
+        } else {
+          setActiveMembership(null);
+        }
+      } catch {
+        setActiveMembership(null);
+      }
+    };
     void loadBalance();
+    void loadMembership();
   }, [selectedCustomer]);
 
   const filteredServices = services.filter((s) => {
@@ -239,25 +283,84 @@ const POSBilling = () => {
     return matchesCategory && matchesActiveCategory && matchesSearch && s.active;
   });
 
-  const addToCart = (serviceId: string) => {
+  const addToCart = async (serviceId: string) => {
     if (billingMode === "existing_due") return;
     const service = services.find((s) => s.id === serviceId);
-    if (!service) return;
+    if (!service || !employees[0]) return;
 
-    const existing = cart.find((c) => c.serviceId === serviceId);
+    let price = service.price;
+    let membershipId: string | undefined;
+    let membershipRedeemed = false;
+    let membershipStatus: string | undefined;
+    let membershipUsedByType: "holder" | "friend" | undefined;
+    let membershipFriendId: string | undefined;
+    let membershipFriendName: string | undefined;
+
+    if (selectedCustomer && activeMembership) {
+      const isFriend = membershipUserKey !== "holder";
+      const friend = isFriend
+        ? activeMembership.friends.find((f) => f.id === membershipUserKey)
+        : null;
+      try {
+        const res = await fetch(`${MEMBERSHIPS_API_BASE}?resource=redeem`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            membershipId: Number(activeMembership.id),
+            serviceId: Number(service.id),
+            serviceName: service.name,
+            usedByType: isFriend ? "friend" : "holder",
+            friendId: friend ? Number(friend.id) : undefined,
+            quantity: 1,
+            recordUsage: false,
+          }),
+        });
+        if (res.ok) {
+          const preview = await res.json();
+          membershipId = activeMembership.id;
+          membershipUsedByType = isFriend ? "friend" : "holder";
+          membershipFriendId = friend?.id;
+          membershipFriendName = friend?.name;
+          if (preview?.status === "redeemed" || preview?.redeemable === true) {
+            price = 0;
+            membershipRedeemed = true;
+            membershipStatus = "redeemed";
+          } else {
+            price = Number(preview?.amountCharged ?? service.price);
+            membershipRedeemed = false;
+            membershipStatus = "paid";
+          }
+        }
+      } catch {
+        /* keep normal price */
+      }
+    }
+
+    const existing = cart.find(
+      (c) =>
+        c.serviceId === serviceId &&
+        Boolean(c.membershipRedeemed) === membershipRedeemed &&
+        (c.membershipFriendId || "") === (membershipFriendId || "")
+    );
     if (existing) {
-      setCart(cart.map((c) => (c.serviceId === serviceId ? { ...c, quantity: c.quantity + 1 } : c)));
+      setCart(cart.map((c) => (c === existing ? { ...c, quantity: c.quantity + 1 } : c)));
     } else {
       setCart([
         ...cart,
         {
           serviceId: service.id,
           serviceName: service.name,
-          price: service.price,
+          price,
           quantity: 1,
           employeeId: employees[0].id,
           employeeName: employees[0].name,
           assignedEmployees: [{ id: employees[0].id, name: employees[0].name }],
+          membershipId,
+          membershipRedeemed,
+          membershipStatus,
+          membershipUsedByType,
+          membershipFriendId,
+          membershipFriendName,
         },
       ]);
     }
@@ -464,11 +567,39 @@ const POSBilling = () => {
 
     const submit = async () => {
       try {
-        await fetch(TRANSACTIONS_API_BASE, {
+        const res = await fetch(TRANSACTIONS_API_BASE, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(tx),
         });
+        const saved = res.ok ? await res.json().catch(() => null) : null;
+        const transactionId = saved?.id ? Number(saved.id) : null;
+
+        // Record membership redemptions after invoice is saved
+        for (const item of cart) {
+          if (!item.membershipId || !item.membershipStatus) continue;
+          for (let q = 0; q < item.quantity; q++) {
+            try {
+              await fetch(`${MEMBERSHIPS_API_BASE}?resource=redeem`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  membershipId: Number(item.membershipId),
+                  serviceId: Number(String(item.serviceId).replace(/^s/, "")),
+                  serviceName: item.serviceName,
+                  usedByType: item.membershipUsedByType || "holder",
+                  friendId: item.membershipFriendId ? Number(item.membershipFriendId) : undefined,
+                  quantity: 1,
+                  recordUsage: true,
+                  transactionId,
+                  usageDate: dateStr,
+                }),
+              });
+            } catch {
+              /* non-blocking */
+            }
+          }
+        }
       } catch (e) {
         // ignore for now, local state still keeps a copy
         console.error(e);
@@ -491,6 +622,8 @@ const POSBilling = () => {
     setOriginalTransaction(null);
     setCheckoutError(null);
     setPaidInput("");
+    setActiveMembership(null);
+    setMembershipUserKey("holder");
     setInvoiceNumber(`${settings.invoicePrefix}${String(Math.floor(Math.random() * 9000) + 1000)}`);
   };
 
@@ -572,6 +705,35 @@ const POSBilling = () => {
             <h1 className="text-lg sm:text-xl font-heading font-bold text-foreground">POS Billing</h1>
             <CustomerSearch selectedCustomerId={selectedCustomer} onSelect={setSelectedCustomer} />
           </div>
+          {activeMembership && (
+            <div className="space-y-2 text-xs sm:text-sm rounded-md border border-border bg-secondary/60 px-3 py-2 text-foreground">
+              <div>
+                Active membership: <span className="font-medium">{activeMembership.categoryName}</span>
+                {activeMembership.endDate ? ` · until ${activeMembership.endDate}` : ""}
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <label htmlFor="pos-membership-user" className="text-muted-foreground shrink-0">
+                  Service for
+                </label>
+                <select
+                  id="pos-membership-user"
+                  value={membershipUserKey}
+                  onChange={(e) => setMembershipUserKey(e.target.value)}
+                  className="flex-1 px-2 py-1.5 bg-background border border-border rounded-md text-sm text-foreground"
+                >
+                  <option value="holder">Membership holder (customer)</option>
+                  {activeMembership.friends.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      Friend/Family: {f.name}{f.phone ? ` (${f.phone})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-muted-foreground">
+                Holder: unlimited = Rs. 0 · Friends: only shareable services redeem; unlimited always payable for friends
+              </p>
+            </div>
+          )}
 
           {/* Service search */}
           <div className="relative">
@@ -753,10 +915,24 @@ const POSBilling = () => {
                   <p className="text-sm text-muted-foreground text-center py-12">Select services to begin</p>
                 ) : (
                   cart.map((item) => (
-                    <div key={item.serviceId} className="bg-background border border-border rounded-md p-3">
+                    <div
+                      key={`${item.serviceId}-${item.membershipRedeemed ? "mem" : "pay"}-${item.membershipFriendId || "holder"}`}
+                      className="bg-background border border-border rounded-md p-3"
+                    >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-foreground">{item.serviceName}</p>
+                          {item.membershipRedeemed && (
+                            <p className="text-[11px] text-emerald-600 mt-0.5">
+                              Membership redeemed · Rs. 0
+                              {item.membershipFriendName ? ` · ${item.membershipFriendName}` : ""}
+                            </p>
+                          )}
+                          {!item.membershipRedeemed && item.membershipUsedByType === "friend" && (
+                            <p className="text-[11px] text-amber-700 mt-0.5">
+                              Friend/Family paid · {item.membershipFriendName || "Friend"}
+                            </p>
+                          )}
                           <div className="mt-1 space-y-1">
                             <p className="text-[11px] text-muted-foreground">Assign employees (max 4)</p>
                             <div className="flex flex-wrap gap-1">
