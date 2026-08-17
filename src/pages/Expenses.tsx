@@ -16,12 +16,61 @@ const Expenses = () => {
   const [editing, setEditing] = useState<Expense | null>(null);
 
   const canEditDelete = user?.role === "admin" || user?.role === "super_admin";
-  const canAccessDate = user?.role !== "manager";
+  // Manager + admin roles get date filters (From/To) to review expenses by range.
+  const canAccessDate =
+    user?.role === "manager" ||
+    user?.role === "admin" ||
+    user?.role === "super_admin" ||
+    user?.role === "cashier";
+  const canPickExpenseDate = user?.role !== "cashier";
 
-  type ExpenseFilterMode = "daily" | "weekly" | "monthly" | "custom";
+  type ExpenseFilterMode = "daily" | "yesterday" | "weekly" | "monthly" | "custom";
   const [filterMode, setFilterMode] = useState<ExpenseFilterMode>("monthly");
-  const [customFrom, setCustomFrom] = useState<string>("");
-  const [customTo, setCustomTo] = useState<string>("");
+
+  const ymdLocal = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const rangeForMode = (mode: ExpenseFilterMode, fromVal = "", toVal = ""): { from: string; to: string } => {
+    const today = new Date();
+    if (mode === "daily") {
+      const t = ymdLocal(today);
+      return { from: t, to: t };
+    }
+    if (mode === "yesterday") {
+      const y = new Date(today);
+      y.setDate(y.getDate() - 1);
+      const t = ymdLocal(y);
+      return { from: t, to: t };
+    }
+    if (mode === "weekly") {
+      const fromD = new Date(today);
+      fromD.setDate(fromD.getDate() - 6);
+      return { from: ymdLocal(fromD), to: ymdLocal(today) };
+    }
+    if (mode === "monthly") {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1);
+      const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      return { from: ymdLocal(start), to: ymdLocal(end) };
+    }
+    return { from: fromVal, to: toVal };
+  };
+
+  const initialMonth = rangeForMode("monthly");
+  const [customFrom, setCustomFrom] = useState<string>(initialMonth.from);
+  const [customTo, setCustomTo] = useState<string>(initialMonth.to);
+
+  // Keep From/To in sync when preset changes (so Manager always sees the dates).
+  useEffect(() => {
+    if (filterMode === "custom") return;
+    const { from, to } = rangeForMode(filterMode);
+    setCustomFrom(from);
+    setCustomTo(to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterMode]);
 
   const loadExpenses = async () => {
     try {
@@ -58,28 +107,8 @@ const Expenses = () => {
   const filteredExpenses = useMemo(() => {
     if (!canAccessDate) return expenses;
 
-    const ymd = (d: Date) => d.toISOString().slice(0, 10);
-    const today = new Date();
-
-    let from: string | null = null;
-    let to: string | null = null;
-
-    if (filterMode === "daily") {
-      from = ymd(today);
-      to = ymd(today);
-    } else if (filterMode === "weekly") {
-      const fromD = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
-      from = ymd(fromD);
-      to = ymd(today);
-    } else if (filterMode === "monthly") {
-      const start = new Date(today.getFullYear(), today.getMonth(), 1);
-      const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      from = ymd(start);
-      to = ymd(end);
-    } else {
-      from = customFrom || null;
-      to = customTo || null;
-    }
+    const from = customFrom || null;
+    const to = customTo || null;
 
     return expenses.filter((e) => {
       const d = e.expenseDate;
@@ -87,7 +116,7 @@ const Expenses = () => {
       if (to && d > to) return false;
       return true;
     });
-  }, [canAccessDate, customFrom, customTo, expenses, filterMode]);
+  }, [canAccessDate, customFrom, customTo, expenses]);
 
   const totalAmount = useMemo(
     () => filteredExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0),
@@ -115,7 +144,7 @@ const Expenses = () => {
     const fd = new FormData(e.currentTarget);
     const defaultDate = new Date().toISOString().slice(0, 10);
     const submittedDate = String(fd.get("expenseDate") ?? "").trim();
-    const resolvedExpenseDate = canAccessDate
+    const resolvedExpenseDate = canPickExpenseDate
       ? submittedDate || editing?.expenseDate || defaultDate
       : editing?.expenseDate || defaultDate;
     const payload = {
@@ -210,62 +239,74 @@ const Expenses = () => {
       </div>
 
       {canAccessDate && (
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-muted-foreground" htmlFor="expense-filter">
-              Filter
-            </label>
-            <select
-              id="expense-filter"
-              value={filterMode}
-              onChange={(e) => setFilterMode(e.target.value as ExpenseFilterMode)}
-              className="px-3 py-2 bg-card text-foreground rounded-md border border-border text-sm"
-            >
-              <option value="weekly">Weekly</option>
-              <option value="daily">Daily</option>
-              <option value="monthly">Monthly</option>
-              <option value="custom">Custom</option>
-            </select>
-          </div>
-
-          {filterMode === "custom" && (
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="space-y-1">
-                <label htmlFor="expense-from" className="text-xs text-muted-foreground">
-                  From
-                </label>
-                <input
-                  id="expense-from"
-                  type="date"
-                  value={customFrom}
-                  onChange={(e) => setCustomFrom(e.target.value)}
-                  className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor="expense-to" className="text-xs text-muted-foreground">
-                  To
-                </label>
-                <input
-                  id="expense-to"
-                  type="date"
-                  value={customTo}
-                  onChange={(e) => setCustomTo(e.target.value)}
-                  className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setCustomFrom("");
-                  setCustomTo("");
-                }}
-                className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-md text-xs md:text-sm border border-border hover:bg-accent transition-colors"
+        <div className="flex flex-col gap-3 p-3 sm:p-4 bg-card border border-border rounded-lg">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-3 flex-wrap">
+            <div className="space-y-1">
+              <label className="text-sm text-muted-foreground" htmlFor="expense-filter">
+                Quick filter
+              </label>
+              <select
+                id="expense-filter"
+                value={filterMode}
+                onChange={(e) => setFilterMode(e.target.value as ExpenseFilterMode)}
+                className="px-3 py-2 bg-background text-foreground rounded-md border border-border text-sm min-w-[160px]"
               >
-                Clear
-              </button>
+                <option value="daily">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="weekly">This Week</option>
+                <option value="monthly">This Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
             </div>
-          )}
+
+            <div className="space-y-1">
+              <label htmlFor="expense-from" className="text-sm text-muted-foreground">
+                From Date
+              </label>
+              <input
+                id="expense-from"
+                type="date"
+                value={customFrom}
+                onChange={(e) => {
+                  setFilterMode("custom");
+                  setCustomFrom(e.target.value);
+                }}
+                className="px-3 py-2 bg-background text-foreground rounded-md border border-border text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="expense-to" className="text-sm text-muted-foreground">
+                To Date
+              </label>
+              <input
+                id="expense-to"
+                type="date"
+                value={customTo}
+                onChange={(e) => {
+                  setFilterMode("custom");
+                  setCustomTo(e.target.value);
+                }}
+                className="px-3 py-2 bg-background text-foreground rounded-md border border-border text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setFilterMode("monthly");
+                const { from, to } = rangeForMode("monthly");
+                setCustomFrom(from);
+                setCustomTo(to);
+              }}
+              className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm border border-border hover:bg-accent transition-colors"
+            >
+              Reset
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Showing expenses from <span className="text-foreground font-medium">{customFrom || "—"}</span>
+            {" "}to{" "}
+            <span className="text-foreground font-medium">{customTo || "—"}</span>
+          </p>
         </div>
       )}
 
@@ -374,7 +415,7 @@ const Expenses = () => {
                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm"
                   />
                 </div>
-                {canAccessDate && (
+                {canPickExpenseDate && (
                   <div className="space-y-1.5">
                     <label htmlFor="expense-date" className="text-sm text-muted-foreground">
                       Date <span className="text-destructive">*</span>
