@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingCart, Users, Scissors, Gift, Percent,
   UserCog, BarChart3, Settings, Moon, Sun, LogOut, ChevronLeft, FileText, ReceiptText, Wallet,
+  CreditCard,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +15,7 @@ const navItems = [
   { label: "Customers", icon: Users, path: "/customers" },
   { label: "Services", icon: Scissors, path: "/services" },
   { label: "Packages", icon: Gift, path: "/packages" },
+  { label: "Memberships", icon: CreditCard, path: "/memberships" },
   { label: "Discounts", icon: Percent, path: "/discounts" },
   { label: "Employees", icon: UserCog, path: "/employees" },
   { label: "Reports", icon: BarChart3, path: "/reports" },
@@ -67,16 +69,26 @@ export function AppSidebar({ variant = "sidebar" }: AppSidebarProps) {
           {theme === "light" ? <Moon className="h-4 w-4 shrink-0" /> : <Sun className="h-4 w-4 shrink-0" />}
           <span>{isDrawer || !collapsed ? (theme === "light" ? "Dark Mode" : "Light Mode") : null}</span>
         </button>
-        {user && (isDrawer || !collapsed) && (
-          <div className="flex items-center gap-3 px-3 py-2">
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold shrink-0">
-              {user.name.split(" ").map(n => n[0]).join("")}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
-              <p className="text-xs text-muted-foreground capitalize">{user.role.replace("_", " ")}</p>
-            </div>
-            <button type="button" onClick={logout} className="text-muted-foreground hover:text-destructive transition-colors p-1 touch-manipulation">
+        {user && (
+          <div className={cn("flex items-center gap-3 px-3 py-2", collapsed && !isDrawer && "justify-center px-1")}>
+            {(isDrawer || !collapsed) && (
+              <>
+                <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold shrink-0">
+                  {user.name.split(" ").map(n => n[0]).join("")}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{user.role.replace("_", " ")}</p>
+                </div>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={logout}
+              className="text-muted-foreground hover:text-destructive transition-colors p-1.5 touch-manipulation"
+              title="Logout"
+              aria-label="Logout"
+            >
               <LogOut className="h-4 w-4" />
             </button>
           </div>
