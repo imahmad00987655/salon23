@@ -46,6 +46,13 @@ export interface CartItem {
   employeeId: string;
   employeeName: string;
   assignedEmployees?: Array<{ id: string; name: string }>;
+  /** Membership redemption metadata (POS) */
+  membershipId?: string;
+  membershipRedeemed?: boolean;
+  membershipStatus?: "redeemed" | "paid" | string;
+  membershipUsedByType?: "holder" | "friend";
+  membershipFriendId?: string;
+  membershipFriendName?: string;
 }
 
 export interface Transaction {
@@ -103,4 +110,92 @@ export interface Expense {
   expenseDate: string;
   createdByName?: string;
   createdAt?: string;
+}
+
+/** Membership category service line (quantity: null=not included, 0=unlimited, n=limited) */
+export interface MembershipCategoryService {
+  id?: string;
+  serviceId?: string;
+  serviceName: string;
+  servicePrice: number;
+  quantity: number | null;
+  shareable?: boolean;
+}
+
+export interface MembershipCategory {
+  id: string;
+  name: string;
+  durationMonths: number;
+  discountPercent: number;
+  price: number;
+  priceBeforeDiscount: number;
+  shareable: boolean;
+  active: boolean;
+  terms?: string;
+  services: MembershipCategoryService[];
+}
+
+export interface MembershipServiceUsage {
+  id: string;
+  serviceId?: string;
+  serviceName: string;
+  servicePrice: number;
+  /** null = not included, 0 = unlimited, n = limited */
+  allowedQty: number | null;
+  usedQty: number;
+  shareable?: boolean;
+}
+
+export interface MembershipFriend {
+  id: string;
+  membershipId: string;
+  name: string;
+  phone: string;
+  relationship?: string;
+}
+
+export interface MembershipServicesSummary {
+  included: number;
+  unlimited: number;
+  limitedRemaining: number;
+  usedTotal?: number;
+  totalServices: number;
+}
+
+export interface MembershipUsageRecord {
+  id: string;
+  serviceName: string;
+  usedByType: "holder" | "friend" | string;
+  friendName?: string;
+  friendPhone?: string;
+  quantity: number;
+  status: "redeemed" | "paid" | string;
+  amountCharged: number;
+  usageDate: string;
+}
+
+export interface Membership {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  categoryId: string;
+  categoryName: string;
+  durationMonths: number;
+  discountPercent: number;
+  price: number;
+  startDate: string;
+  endDate: string;
+  status: "active" | "expired" | "upcoming" | "cancelled" | string;
+  invoiceNumber: string;
+  paymentStatus: "paid" | "partial" | "unpaid" | string;
+  paidAmount: number;
+  notes?: string;
+  terms?: string;
+  friendsCount?: number;
+  friendsSummary?: string[];
+  services?: MembershipServiceUsage[];
+  friends?: MembershipFriend[];
+  usage?: MembershipUsageRecord[];
+  servicesSummary?: MembershipServicesSummary;
 }
