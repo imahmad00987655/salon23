@@ -11,12 +11,12 @@ export interface AppUser {
 }
 
 const AUTH_API_BASE = `${getApiOrigin()}/auth.php`;
+const USER_STORAGE_KEY = "salon-spark:user";
 
-// Permission map per role
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  admin: ["/", "/pos", "/customers", "/services", "/packages", "/discounts", "/employees", "/reports", "/invoices", "/expenses", "/customer-balances", "/settings"],
-  super_admin: ["/", "/pos", "/customers", "/services", "/packages", "/discounts", "/employees", "/reports", "/invoices", "/expenses", "/customer-balances", "/settings"],
-  manager: ["/", "/pos", "/customers", "/services", "/packages", "/discounts", "/employees", "/reports", "/invoices", "/expenses", "/customer-balances"],
+  admin: ["/", "/pos", "/customers", "/services", "/packages", "/memberships", "/discounts", "/employees", "/reports", "/invoices", "/expenses", "/customer-balances", "/settings"],
+  super_admin: ["/", "/pos", "/customers", "/services", "/packages", "/memberships", "/discounts", "/employees", "/reports", "/invoices", "/expenses", "/customer-balances", "/settings"],
+  manager: ["/", "/pos", "/customers", "/services", "/packages", "/memberships", "/discounts", "/employees", "/reports", "/invoices", "/expenses", "/customer-balances"],
   cashier: ["/pos", "/customers", "/discounts", "/reports", "/expenses", "/customer-balances"],
 };
 
@@ -31,10 +31,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function clearAuthStorage() {
+  try {
+    window.localStorage.removeItem(USER_STORAGE_KEY);
+    window.sessionStorage.removeItem(USER_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(() => {
     if (typeof window === "undefined") return null;
-    const raw = window.localStorage.getItem("salon-spark:user");
+    const raw = window.localStorage.getItem(USER_STORAGE_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw) as AppUser;
@@ -45,11 +54,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (user) {
-      window.localStorage.setItem("salon-spark:user", JSON.stringify(user));
+      window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
     } else {
-      window.localStorage.removeItem("salon-spark:user");
+      clearAuthStorage();
     }
   }, [user]);
+
+  // After logout, trap Back button so protected pages cannot be restored from bfcache.
+  useEffect(() => {
+    if (user) return;
+    const onPopState = () => {
+      clearAuthStorage();
+      window.history.pushState(null, "", window.location.href);
+    };
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [user]);
+
+  // If page restored from back-forward cache without a user, force clean login state.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return;
+      const raw = window.localStorage.getItem(USER_STORAGE_KEY);
+      if (!raw) {
+        setUser(null);
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
 
   const login = async (email: string, password: string): Promise<string | null> => {
     try {
@@ -79,7 +113,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    clearAuthStorage();
     setUser(null);
+    try {
+      window.history.pushState(null, "", window.location.href);
+    } catch {
+      /* ignore */
+    }
   };
 
   const hasAccess = (path: string) => {
