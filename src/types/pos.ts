@@ -191,6 +191,7 @@ export interface Membership {
   paymentStatus: "paid" | "partial" | "unpaid" | string;
   paidAmount: number;
   notes?: string;
+  referenceBy?: string;
   terms?: string;
   friendsCount?: number;
   friendsSummary?: string[];
