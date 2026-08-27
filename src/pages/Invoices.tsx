@@ -13,7 +13,7 @@ const Invoices = () => {
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<"all" | "paid" | "partial" | "unpaid">("all");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<"all" | "paid" | "partial" | "unpaid" | "cancelled">("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<"all" | "cash" | "card" | "online">("all");
   const [customerFilter, setCustomerFilter] = useState<string>("all");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -52,6 +52,8 @@ const Invoices = () => {
   });
   const totals = filtered.reduce(
     (acc, tx) => {
+      // Cancelled invoices (e.g. cancelled membership) must not count in summary widgets
+      if ((tx.paymentStatus ?? "").toLowerCase() === "cancelled") return acc;
       const total = Number(tx.total ?? 0);
       const paid = Number(tx.paidAmount ?? total);
       const remaining = Number(tx.remainingBalance ?? 0);
@@ -278,13 +280,14 @@ const Invoices = () => {
             <select
               id="invoice-status"
               value={paymentStatusFilter}
-              onChange={(e) => setPaymentStatusFilter(e.target.value as "all" | "paid" | "partial" | "unpaid")}
+              onChange={(e) => setPaymentStatusFilter(e.target.value as "all" | "paid" | "partial" | "unpaid" | "cancelled")}
               className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
             >
               <option value="all">All</option>
               <option value="paid">Paid</option>
               <option value="partial">Partial</option>
               <option value="unpaid">Unpaid</option>
+              <option value="cancelled">Cancelled</option>
             </select>
           </div>
           {canFilterPaymentMethod && (
@@ -382,7 +385,9 @@ const Invoices = () => {
                         ? "bg-success/10 text-success"
                         : (t.paymentStatus ?? "paid") === "partial"
                           ? "bg-yellow-500/10 text-yellow-600"
-                          : "bg-destructive/10 text-destructive"
+                          : (t.paymentStatus ?? "paid") === "cancelled"
+                            ? "bg-muted text-muted-foreground line-through"
+                            : "bg-destructive/10 text-destructive"
                     )}
                   >
                     {t.paymentStatus ?? "paid"}
