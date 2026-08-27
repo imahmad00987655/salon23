@@ -374,6 +374,229 @@ const PRINT_STYLES = `
   }
 `;
 
+/** A4 document layout for membership invoice / usage PDF (not thermal receipt). */
+const A4_PRINT_STYLES = `
+  :root {
+    color-scheme: light;
+    --text: #111;
+    --muted: #555;
+    --line: #222;
+    --border: #ccc;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 14mm 14mm 16mm;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    color: var(--text);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body {
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    font-size: 12.5px;
+    line-height: 1.45;
+    font-weight: 500;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  * { box-sizing: border-box; }
+
+  .receipt, .doc-sheet {
+    width: 100%;
+    max-width: 190mm;
+    margin: 0 auto;
+    padding: 8mm 6mm;
+  }
+
+  .center { text-align: center; }
+  .right { text-align: right; }
+  .left { text-align: left; }
+
+  .separator {
+    border-top: 1px solid var(--border);
+    margin: 12px 0;
+    width: 100%;
+  }
+
+  .separator-strong {
+    border-top: 2px solid var(--line);
+    margin: 14px 0;
+    width: 100%;
+  }
+
+  .invoice-header {
+    text-align: center;
+    padding-bottom: 8px;
+  }
+
+  .brand-name, .company-name {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    margin: 0;
+    line-height: 1.2;
+    text-transform: uppercase;
+    color: #000;
+  }
+
+  .invoice-title {
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    margin: 8px 0 4px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #222;
+  }
+
+  .meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 28px;
+    margin: 4px 0 2px;
+  }
+
+  .meta > div {
+    font-size: 12.5px;
+    padding: 3px 0;
+    border-bottom: 1px dotted #ddd;
+  }
+
+  .meta > div strong {
+    display: inline-block;
+    min-width: 110px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  .meta-table,
+  .items-table,
+  .totals-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .items-table {
+    margin-top: 6px;
+    border: 1px solid #bbb;
+  }
+
+  .items-table th,
+  .items-table td {
+    padding: 8px 10px;
+    vertical-align: middle;
+    word-break: break-word;
+  }
+
+  .items-table thead th {
+    background: #f3f3f3;
+    border-bottom: 1px solid #999;
+    border-right: 1px solid #ddd;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .items-table thead th:last-child { border-right: none; }
+
+  .items-table tbody td {
+    border-bottom: 1px solid #e5e5e5;
+    border-right: 1px solid #eee;
+    font-size: 12.5px;
+  }
+
+  .items-table tbody td:last-child { border-right: none; }
+  .items-table tbody tr:last-child td { border-bottom: none; }
+
+  .col-service { width: 36%; text-align: left; }
+  .col-qty { width: 14%; text-align: center; }
+  .col-rate { width: 18%; text-align: center; }
+  .col-amount { width: 18%; text-align: center; }
+
+  .service-name { font-weight: 650; line-height: 1.3; }
+
+  .totals-table {
+    margin-top: 10px;
+    max-width: 320px;
+    margin-left: auto;
+  }
+
+  .totals-table td {
+    padding: 6px 4px;
+    border: none;
+    font-size: 13px;
+  }
+
+  .totals-label { width: 55%; font-weight: 700; }
+  .totals-value { width: 45%; text-align: right; white-space: nowrap; font-weight: 700; }
+
+  .grand-total-row td {
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .footer {
+    margin-top: 28px;
+    text-align: center;
+  }
+
+  .thank-you {
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .footer-note {
+    margin-top: 10px;
+    font-size: 11.5px;
+    color: var(--muted);
+    font-weight: 500;
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  .powered-by {
+    margin-top: 18px;
+    padding-top: 8px;
+    border-top: 1px solid #ddd;
+    font-size: 10px;
+    color: #666;
+    font-weight: 500;
+    line-height: 1.3;
+    text-align: center;
+    letter-spacing: 0.2px;
+  }
+
+  @media print {
+    html, body { width: auto; overflow: visible; }
+    .receipt, .doc-sheet { max-width: none; padding: 0; }
+  }
+
+  @media screen {
+    body { background: #e8e8e8; padding: 16px; }
+    .receipt, .doc-sheet {
+      background: #fff;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+      min-height: 260mm;
+    }
+  }
+`;
+
 export type ProfessionalInvoiceOptions = {
   companyName?: string;
   companyTagline?: string;
@@ -630,7 +853,7 @@ export type MembershipInvoiceOptions = {
 export function buildMembershipInvoiceHtml(options: MembershipInvoiceOptions): string {
   // Invoice must NOT expose service allowance/pricing list (usage stays in membership detail view).
   return `
-    <div class="receipt">
+    <div class="doc-sheet receipt">
       <div class="invoice-header">
         <div class="brand-name">Sheeza Saloon</div>
         <div class="invoice-title">Membership Invoice</div>
@@ -639,17 +862,17 @@ export function buildMembershipInvoiceHtml(options: MembershipInvoiceOptions): s
       <div class="meta">
         <div><strong>Invoice:</strong> ${escapeHtml(options.invoiceNumber)}</div>
         <div><strong>Customer:</strong> ${escapeHtml(options.customerName)}</div>
-        ${options.customerPhone ? `<div><strong>Phone:</strong> ${escapeHtml(options.customerPhone)}</div>` : ""}
+        ${options.customerPhone ? `<div><strong>Phone:</strong> ${escapeHtml(options.customerPhone)}</div>` : "<div></div>"}
         <div><strong>Membership:</strong> ${escapeHtml(options.membershipName)}</div>
         <div><strong>Duration:</strong> ${escapeHtml(String(options.durationMonths))} months</div>
+        <div><strong>Discount:</strong> ${escapeHtml(String(options.discountPercent))}%</div>
         <div><strong>Start:</strong> ${escapeHtml(options.startDate)}</div>
         <div><strong>End:</strong> ${escapeHtml(options.endDate)}</div>
-        <div><strong>Discount:</strong> ${escapeHtml(String(options.discountPercent))}%</div>
         <div><strong>Payment:</strong> ${escapeHtml(options.paymentStatus)}</div>
         ${
           options.referenceBy && options.referenceBy.trim()
             ? `<div><strong>Reference By:</strong> ${escapeHtml(options.referenceBy.trim())}</div>`
-            : ""
+            : "<div></div>"
         }
       </div>
       <div class="separator"></div>
@@ -718,7 +941,7 @@ export function buildMembershipUsagePdfHtml(options: MembershipUsagePdfOptions):
     .join("");
 
   return `
-    <div class="receipt">
+    <div class="doc-sheet receipt">
       <div class="invoice-header">
         <div class="brand-name">Sheeza Saloon</div>
         <div class="invoice-title">Membership Service Usage</div>
@@ -727,14 +950,14 @@ export function buildMembershipUsagePdfHtml(options: MembershipUsagePdfOptions):
       <div class="meta">
         <div><strong>Invoice:</strong> ${escapeHtml(options.invoiceNumber)}</div>
         <div><strong>Customer:</strong> ${escapeHtml(options.customerName)}</div>
-        ${options.customerPhone ? `<div><strong>Phone:</strong> ${escapeHtml(options.customerPhone)}</div>` : ""}
+        ${options.customerPhone ? `<div><strong>Phone:</strong> ${escapeHtml(options.customerPhone)}</div>` : "<div></div>"}
         <div><strong>Membership:</strong> ${escapeHtml(options.membershipName)}</div>
         <div><strong>Period:</strong> ${escapeHtml(options.startDate)} — ${escapeHtml(options.endDate)}</div>
         <div><strong>Status:</strong> ${escapeHtml(options.status)}</div>
         ${
           options.referenceBy && options.referenceBy.trim()
             ? `<div><strong>Reference By:</strong> ${escapeHtml(options.referenceBy.trim())}</div>`
-            : ""
+            : "<div></div>"
         }
       </div>
       <div class="separator"></div>
@@ -761,22 +984,32 @@ export function buildMembershipUsagePdfHtml(options: MembershipUsagePdfOptions):
   `;
 }
 
-const PRINT_HTML = (title: string, bodyHtml: string) => `<!doctype html>
+export type PrintPageFormat = "receipt" | "a4";
+
+const PRINT_HTML = (title: string, bodyHtml: string, format: PrintPageFormat = "receipt") => `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)}</title>
-    <style>${PRINT_STYLES}</style>
+    <style>${format === "a4" ? A4_PRINT_STYLES : PRINT_STYLES}</style>
   </head>
   <body>${bodyHtml}</body>
 </html>`;
 
-export function openPrintWindow(title: string, bodyHtml: string) {
+export function openPrintWindow(
+  title: string,
+  bodyHtml: string,
+  options?: { format?: PrintPageFormat }
+) {
+  const format: PrintPageFormat = options?.format ?? "receipt";
   const iframe = document.createElement("iframe");
+  // A4 needs a real page-sized frame so print/PDF is not cropped to thermal width
   iframe.setAttribute(
     "style",
-    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;"
+    format === "a4"
+      ? "position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;"
+      : "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;"
   );
 
   document.body.appendChild(iframe);
@@ -790,7 +1023,7 @@ export function openPrintWindow(title: string, bodyHtml: string) {
   }
 
   doc.open();
-  doc.write(PRINT_HTML(title, bodyHtml));
+  doc.write(PRINT_HTML(title, bodyHtml, format));
   doc.close();
 
   const images = Array.from(doc.images ?? []);
