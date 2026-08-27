@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Membership,
   MembershipCategory,
@@ -19,9 +19,15 @@ import {
   Pencil,
   BadgeCheck,
   Printer,
+  Download,
+  Search,
 } from "lucide-react";
 import { getApiOrigin } from "@/lib/apiBase";
-import { openPrintWindow, buildMembershipInvoiceHtml } from "@/lib/exporting";
+import {
+  openPrintWindow,
+  buildMembershipInvoiceHtml,
+  buildMembershipUsagePdfHtml,
+} from "@/lib/exporting";
 
 const API_BASE = `${getApiOrigin()}/memberships.php`;
 const CUSTOMERS_API = `${getApiOrigin()}/customers.php`;
@@ -210,6 +216,10 @@ const mapMembership = (row: Record<string, unknown>): Membership => {
     paymentStatus: String(row.payment_status ?? row.paymentStatus ?? "paid") as Membership["paymentStatus"],
     paidAmount: Number(row.paid_amount ?? row.paidAmount ?? 0),
     notes: row.notes != null ? String(row.notes) : undefined,
+    referenceBy:
+      row.reference_by != null || row.referenceBy != null
+        ? String(row.reference_by ?? row.referenceBy)
+        : undefined,
     terms: row.terms != null ? String(row.terms) : undefined,
     friendsCount: friends.length || Number(row.friends_count ?? row.friendsCount ?? 0),
     friendsSummary: Array.isArray(row.friends_summary)
@@ -280,6 +290,10 @@ const Memberships = () => {
   const [assignPaymentStatus] = useState<"paid">("paid");
   const [assignPaidAmount, setAssignPaidAmount] = useState("");
   const [assignPaymentMethod, setAssignPaymentMethod] = useState<"cash" | "card" | "online">("cash");
+  const [assignReferenceBy, setAssignReferenceBy] = useState("");
+  const [listSearch, setListSearch] = useState("");
+  const [listFromDate, setListFromDate] = useState("");
+  const [listToDate, setListToDate] = useState("");
 
   const addMonthsMinusOneDay = (ymd: string, months: number): string => {
     const d = new Date(`${ymd}T12:00:00`);
@@ -310,6 +324,7 @@ const Memberships = () => {
     setAssignEndDate("");
     setAssignPaidAmount("");
     setAssignPaymentMethod("cash");
+    setAssignReferenceBy("");
     setCustomerSearch("");
   };
   const [customerSearch, setCustomerSearch] = useState("");
@@ -451,7 +466,7 @@ const Memberships = () => {
     try {
       setError(null);
       let membership = m;
-      if (!membership.services || membership.services.length === 0) {
+      if (!membership.invoiceNumber) {
         membership = await fetchMembershipDetail(m.id);
       }
       const html = buildMembershipInvoiceHtml({
@@ -466,16 +481,42 @@ const Memberships = () => {
         price: membership.price,
         paidAmount: membership.paidAmount,
         paymentStatus: membership.paymentStatus,
+        referenceBy: membership.referenceBy,
         terms:
           membership.terms ||
           `${membership.categoryName}: ${membership.discountPercent}% · ${membership.durationMonths} months`,
-        services: (membership.services ?? []).map((s) => ({
-          serviceName: s.serviceName,
-          quantity: s.allowedQty,
-          servicePrice: s.servicePrice,
-        })),
       });
       openPrintWindow(`Membership ${membership.invoiceNumber}`, html);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const downloadMembershipUsagePdf = async (m: Membership) => {
+    try {
+      setError(null);
+      let membership = m;
+      if (!membership.services || membership.services.length === 0) {
+        membership = await fetchMembershipDetail(m.id);
+      }
+      const html = buildMembershipUsagePdfHtml({
+        invoiceNumber: membership.invoiceNumber,
+        customerName: membership.customerName,
+        customerPhone: membership.customerPhone,
+        membershipName: membership.categoryName,
+        startDate: membership.startDate,
+        endDate: membership.endDate,
+        status: membership.status,
+        referenceBy: membership.referenceBy,
+        services: (membership.services ?? []).map((s) => ({
+          serviceName: s.serviceName,
+          allowedQty: s.allowedQty,
+          usedQty: s.usedQty,
+          remainingLabel: formatRemaining(s.allowedQty, s.usedQty),
+          shareable: s.shareable !== false,
+        })),
+      });
+      openPrintWindow(`Membership Usage ${membership.invoiceNumber}`, html);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -567,6 +608,7 @@ const Memberships = () => {
       paymentStatus: assignPaymentStatus || "paid",
       paidAmount: Number(assignPaidAmount || 0),
       paymentMethod: assignPaymentMethod || "cash",
+      referenceBy: assignReferenceBy.trim() || undefined,
     };
 
     const submit = async () => {
@@ -735,6 +777,35 @@ const Memberships = () => {
       c.phone.includes(customerSearch)
   );
 
+  const filteredMemberships = useMemo(() => {
+    const q = listSearch.trim().toLowerCase();
+    return memberships.filter((m) => {
+      if (listFromDate && m.startDate && m.startDate < listFromDate) return false;
+      if (listToDate && m.startDate && m.startDate > listToDate) return false;
+      if (!q) return true;
+      return (
+        m.customerName.toLowerCase().includes(q) ||
+        m.customerPhone.toLowerCase().includes(q) ||
+        m.invoiceNumber.toLowerCase().includes(q) ||
+        m.categoryName.toLowerCase().includes(q) ||
+        String(m.referenceBy ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [memberships, listSearch, listFromDate, listToDate]);
+
+  const membershipTotals = useMemo(() => {
+    return filteredMemberships.reduce(
+      (acc, m) => {
+        const total = Number(m.price || 0);
+        const paid = Number(m.paidAmount || 0);
+        acc.total += total;
+        acc.balance += Math.max(0, total - paid);
+        return acc;
+      },
+      { total: 0, balance: 0 }
+    );
+  }, [filteredMemberships]);
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -744,7 +815,7 @@ const Memberships = () => {
             {loading
               ? "Loading..."
               : tab === "memberships"
-                ? `${memberships.length} purchased memberships`
+                ? `${filteredMemberships.length} of ${memberships.length} purchased memberships`
                 : `${categories.length} categories`}
           </p>
           {error && <p className="text-xs text-destructive mt-1">{error}</p>}
@@ -807,6 +878,76 @@ const Memberships = () => {
 
       {/* Purchased Memberships */}
       {tab === "memberships" && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-card border border-border rounded-md p-3">
+              <p className="text-xs text-muted-foreground">Total (filtered)</p>
+              <p className="font-heading font-bold text-foreground">
+                Rs. {membershipTotals.total.toFixed(2)}
+              </p>
+            </div>
+            <div className="bg-card border border-border rounded-md p-3">
+              <p className="text-xs text-muted-foreground">Balance (filtered)</p>
+              <p className="font-heading font-bold text-destructive">
+                Rs. {membershipTotals.balance.toFixed(2)}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div className="relative max-w-md w-full">
+              <label htmlFor="membership-search" className="sr-only">
+                Search memberships
+              </label>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                id="membership-search"
+                type="text"
+                placeholder="Search customer, phone, invoice, category..."
+                value={listSearch}
+                onChange={(e) => setListSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-card text-foreground text-sm rounded-md border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs md:text-sm">
+              <div className="space-y-1">
+                <label htmlFor="membership-from" className="text-muted-foreground">
+                  From (start)
+                </label>
+                <input
+                  id="membership-from"
+                  type="date"
+                  value={listFromDate}
+                  onChange={(e) => setListFromDate(e.target.value)}
+                  className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="membership-to" className="text-muted-foreground">
+                  To (start)
+                </label>
+                <input
+                  id="membership-to"
+                  type="date"
+                  value={listToDate}
+                  onChange={(e) => setListToDate(e.target.value)}
+                  className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setListSearch("");
+                  setListFromDate("");
+                  setListToDate("");
+                }}
+                className="self-end px-3 py-1.5 bg-secondary text-secondary-foreground rounded-md text-xs border border-border hover:bg-accent transition-colors"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+
         <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
           <table className="w-full text-sm min-w-[1100px]">
             <thead>
@@ -824,7 +965,7 @@ const Memberships = () => {
               </tr>
             </thead>
             <tbody>
-              {memberships.map((m) => (
+              {filteredMemberships.map((m) => (
                 <tr key={m.id} className="border-b border-border last:border-0 hover:bg-accent/50">
                   <td className="py-3 px-4">
                     <p className="text-foreground font-medium">{m.customerName || "—"}</p>
@@ -897,16 +1038,17 @@ const Memberships = () => {
                   </td>
                 </tr>
               ))}
-              {memberships.length === 0 && (
+              {filteredMemberships.length === 0 && (
                 <tr>
                   <td colSpan={10} className="py-12 text-center text-muted-foreground">
-                    No memberships yet — assign one to get started
+                    No memberships for selected filter
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* Categories */}
@@ -1120,6 +1262,22 @@ const Memberships = () => {
                     onChange={(e) => setAssignPaidAmount(e.target.value)}
                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <label htmlFor="assign-referenceBy" className="text-sm text-muted-foreground">
+                    Reference By
+                  </label>
+                  <input
+                    id="assign-referenceBy"
+                    type="text"
+                    placeholder="e.g. Ali"
+                    value={assignReferenceBy}
+                    onChange={(e) => setAssignReferenceBy(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Manual name of the person who referred/generated this membership sale.
+                  </p>
                 </div>
               </div>
               {assignCategoryId && (
@@ -1454,12 +1612,28 @@ const Memberships = () => {
                     Payment: {detail.paymentStatus} · Rs. {Number(detail.paidAmount).toLocaleString()}
                     {" / "}Rs. {Number(detail.price).toLocaleString()}
                   </span>
+                  {detail.referenceBy && (
+                    <span className="text-muted-foreground">
+                      Reference By: <span className="text-foreground">{detail.referenceBy}</span>
+                    </span>
+                  )}
                   {detail.customerPhone && (
                     <span className="text-muted-foreground">{detail.customerPhone}</span>
                   )}
                 </div>
 
-                <h3 className="text-sm font-heading font-semibold text-card-foreground mb-2">Service usage</h3>
+                <h3 className="text-sm font-heading font-semibold text-card-foreground mb-2 flex items-center justify-between gap-2">
+                  <span>Service usage</span>
+                  <button
+                    type="button"
+                    onClick={() => void downloadMembershipUsagePdf(detail)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-secondary text-secondary-foreground text-xs font-medium hover:bg-accent transition-colors"
+                    title="Download service usage PDF"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Download PDF
+                  </button>
+                </h3>
                 <div className="bg-background border border-border rounded-lg overflow-hidden mb-4">
                   <table className="w-full text-sm">
                     <thead>
