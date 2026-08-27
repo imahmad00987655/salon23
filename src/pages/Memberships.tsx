@@ -486,7 +486,7 @@ const Memberships = () => {
           membership.terms ||
           `${membership.categoryName}: ${membership.discountPercent}% · ${membership.durationMonths} months`,
       });
-      openPrintWindow(`Membership ${membership.invoiceNumber}`, html);
+      openPrintWindow(`Membership ${membership.invoiceNumber}`, html, { format: "a4" });
     } catch (e) {
       setError((e as Error).message);
     }
@@ -516,7 +516,7 @@ const Memberships = () => {
           shareable: s.shareable !== false,
         })),
       });
-      openPrintWindow(`Membership Usage ${membership.invoiceNumber}`, html);
+      openPrintWindow(`Membership Usage ${membership.invoiceNumber}`, html, { format: "a4" });
     } catch (e) {
       setError((e as Error).message);
     }
@@ -796,6 +796,8 @@ const Memberships = () => {
   const membershipTotals = useMemo(() => {
     return filteredMemberships.reduce(
       (acc, m) => {
+        // Cancelled memberships must not count toward Total / Balance
+        if (m.status === "cancelled") return acc;
         const total = Number(m.price || 0);
         const paid = Number(m.paidAmount || 0);
         acc.total += total;
