@@ -623,34 +623,12 @@ export type MembershipInvoiceOptions = {
   price: number;
   paidAmount: number;
   paymentStatus: string;
+  referenceBy?: string;
   terms?: string;
-  services: Array<{
-    serviceName: string;
-    quantity: number | null;
-    servicePrice?: number;
-  }>;
 };
 
-function formatQtyLabel(qty: number | null | undefined) {
-  if (qty === null || qty === undefined) return "Not included";
-  if (Number(qty) === 0) return "Unlimited";
-  return String(qty);
-}
-
 export function buildMembershipInvoiceHtml(options: MembershipInvoiceOptions): string {
-  const included = (options.services || []).filter(
-    (s) => s.quantity !== null && s.quantity !== undefined
-  );
-  const serviceRows = included
-    .map(
-      (s) => `
-      <tr>
-        <td class="col-service"><span class="service-name">${escapeHtml(s.serviceName)}</span></td>
-        <td class="col-qty">${escapeHtml(formatQtyLabel(s.quantity))}</td>
-      </tr>`
-    )
-    .join("");
-
+  // Invoice must NOT expose service allowance/pricing list (usage stays in membership detail view).
   return `
     <div class="receipt">
       <div class="invoice-header">
@@ -668,24 +646,21 @@ export function buildMembershipInvoiceHtml(options: MembershipInvoiceOptions): s
         <div><strong>End:</strong> ${escapeHtml(options.endDate)}</div>
         <div><strong>Discount:</strong> ${escapeHtml(String(options.discountPercent))}%</div>
         <div><strong>Payment:</strong> ${escapeHtml(options.paymentStatus)}</div>
+        ${
+          options.referenceBy && options.referenceBy.trim()
+            ? `<div><strong>Reference By:</strong> ${escapeHtml(options.referenceBy.trim())}</div>`
+            : ""
+        }
       </div>
       <div class="separator"></div>
-      <table class="items-table" width="100%">
-        <thead>
-          <tr>
-            <th class="col-service">Included Service</th>
-            <th class="col-qty">Qty</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${serviceRows || `<tr><td colspan="2" class="center">No included services</td></tr>`}
-        </tbody>
-      </table>
-      <div class="separator"></div>
       <table class="totals-table" width="100%">
-        <tr>
+        <tr class="grand-total-row">
           <td class="totals-label"><strong>Total</strong></td>
           <td class="totals-value"><strong>${escapeHtml(formatPKR(options.price))}</strong></td>
+        </tr>
+        <tr>
+          <td class="totals-label">Paid</td>
+          <td class="totals-value">${escapeHtml(formatPKR(options.paidAmount))}</td>
         </tr>
       </table>
       ${
@@ -696,6 +671,90 @@ export function buildMembershipInvoiceHtml(options: MembershipInvoiceOptions): s
       <div class="separator-strong"></div>
       <div class="footer">
         <p class="thank-you">Thank You For Your Membership</p>
+        <div class="powered-by">Powered by ZepTechLogix • Software Solutions</div>
+      </div>
+    </div>
+  `;
+}
+
+export type MembershipUsagePdfOptions = {
+  invoiceNumber: string;
+  customerName: string;
+  customerPhone?: string;
+  membershipName: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  referenceBy?: string;
+  services: Array<{
+    serviceName: string;
+    allowedQty: number | null;
+    usedQty: number;
+    remainingLabel: string;
+    shareable: boolean;
+  }>;
+};
+
+function formatAllowedQtyLabel(qty: number | null | undefined) {
+  if (qty === null || qty === undefined) return "Not included";
+  if (Number(qty) === 0) return "Unlimited";
+  return String(qty);
+}
+
+export function buildMembershipUsagePdfHtml(options: MembershipUsagePdfOptions): string {
+  const rows = (options.services || [])
+    .map(
+      (s) => `
+      <tr>
+        <td class="col-service"><span class="service-name">${escapeHtml(s.serviceName)}</span></td>
+        <td class="col-qty">${escapeHtml(formatAllowedQtyLabel(s.allowedQty))}</td>
+        <td class="col-qty">${
+          s.allowedQty === null || s.allowedQty === undefined ? "—" : escapeHtml(String(s.usedQty))
+        }</td>
+        <td class="col-rate">${escapeHtml(s.remainingLabel)}</td>
+        <td class="col-amount">${escapeHtml(s.shareable ? "Yes" : "No (holder only)")}</td>
+      </tr>`
+    )
+    .join("");
+
+  return `
+    <div class="receipt">
+      <div class="invoice-header">
+        <div class="brand-name">Sheeza Saloon</div>
+        <div class="invoice-title">Membership Service Usage</div>
+      </div>
+      <div class="separator-strong"></div>
+      <div class="meta">
+        <div><strong>Invoice:</strong> ${escapeHtml(options.invoiceNumber)}</div>
+        <div><strong>Customer:</strong> ${escapeHtml(options.customerName)}</div>
+        ${options.customerPhone ? `<div><strong>Phone:</strong> ${escapeHtml(options.customerPhone)}</div>` : ""}
+        <div><strong>Membership:</strong> ${escapeHtml(options.membershipName)}</div>
+        <div><strong>Period:</strong> ${escapeHtml(options.startDate)} — ${escapeHtml(options.endDate)}</div>
+        <div><strong>Status:</strong> ${escapeHtml(options.status)}</div>
+        ${
+          options.referenceBy && options.referenceBy.trim()
+            ? `<div><strong>Reference By:</strong> ${escapeHtml(options.referenceBy.trim())}</div>`
+            : ""
+        }
+      </div>
+      <div class="separator"></div>
+      <table class="items-table" width="100%">
+        <thead>
+          <tr>
+            <th class="col-service">Service</th>
+            <th class="col-qty">Allowed</th>
+            <th class="col-qty">Used</th>
+            <th class="col-rate">Remaining</th>
+            <th class="col-amount">Shareable</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || `<tr><td colspan="5" class="center">No services on this membership</td></tr>`}
+        </tbody>
+      </table>
+      <div class="separator-strong"></div>
+      <div class="footer">
+        <p class="thank-you">Service Usage Report</p>
         <div class="powered-by">Powered by ZepTechLogix • Software Solutions</div>
       </div>
     </div>
