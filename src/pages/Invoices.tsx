@@ -39,7 +39,12 @@ const Invoices = () => {
     }
     if (fromDate && t.date < fromDate) return false;
     if (toDate && t.date > toDate) return false;
-    if (paymentStatusFilter !== "all" && (t.paymentStatus ?? "paid") !== paymentStatusFilter) return false;
+    // Default "All" hides cancelled membership/invoices from list + revenue widgets
+    if (paymentStatusFilter === "all") {
+      if ((t.paymentStatus ?? "").toLowerCase() === "cancelled") return false;
+    } else if ((t.paymentStatus ?? "paid") !== paymentStatusFilter) {
+      return false;
+    }
     if (
       canFilterPaymentMethod &&
       paymentMethodFilter !== "all" &&
@@ -52,7 +57,6 @@ const Invoices = () => {
   });
   const totals = filtered.reduce(
     (acc, tx) => {
-      // Cancelled invoices (e.g. cancelled membership) must not count in summary widgets
       if ((tx.paymentStatus ?? "").toLowerCase() === "cancelled") return acc;
       const total = Number(tx.total ?? 0);
       const paid = Number(tx.paidAmount ?? total);
@@ -283,7 +287,7 @@ const Invoices = () => {
               onChange={(e) => setPaymentStatusFilter(e.target.value as "all" | "paid" | "partial" | "unpaid" | "cancelled")}
               className="px-2 py-1.5 bg-card text-foreground rounded-md border border-border text-xs md:text-sm"
             >
-              <option value="all">All</option>
+              <option value="all">All (excl. cancelled)</option>
               <option value="paid">Paid</option>
               <option value="partial">Partial</option>
               <option value="unpaid">Unpaid</option>
