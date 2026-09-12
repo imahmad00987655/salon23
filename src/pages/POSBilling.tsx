@@ -1,7 +1,22 @@
 import { useEffect, useState } from "react";
 import { Service, ServiceCategory, Customer, Employee, Package, Discount, CartItem, Transaction } from "@/types/pos";
 import { cn } from "@/lib/utils";
-import { X, Minus, Plus, Search, CreditCard, Banknote, Globe, FileText, Printer, Download, ChevronDown, Check } from "lucide-react";
+import {
+  X,
+  Minus,
+  Plus,
+  Search,
+  CreditCard,
+  Banknote,
+  Globe,
+  FileText,
+  Printer,
+  Download,
+  ChevronDown,
+  Check,
+  ShoppingCart,
+  LayoutGrid,
+} from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CustomerSearch } from "@/components/CustomerSearch";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -68,6 +83,12 @@ const POSBilling = () => {
   } | null>(null);
   /** holder = membership customer; otherwise friend id */
   const [membershipUserKey, setMembershipUserKey] = useState<string>("holder");
+  /** Mobile: switch between catalog and cart full screens */
+  const [mobilePanel, setMobilePanel] = useState<"services" | "cart">("services");
+
+  useEffect(() => {
+    if (checkoutComplete) setMobilePanel("cart");
+  }, [checkoutComplete]);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -691,499 +712,640 @@ const POSBilling = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen min-h-[100dvh] max-h-screen overflow-hidden animate-fade-in">
-      {/* Left - Service Selection ~60% */}
-      <div
-        className={cn(
-          "flex flex-col min-h-0 flex-1 lg:flex-[3] border-b lg:border-b-0 lg:border-r border-border transition-opacity duration-500",
-          checkoutComplete && "opacity-50 pointer-events-none"
-        )}
-      >
-        {/* Header */}
-        <div className="p-3 sm:p-4 border-b border-border space-y-2 sm:space-y-3 shrink-0">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="text-lg sm:text-xl font-heading font-bold text-foreground">POS Billing</h1>
-            <CustomerSearch selectedCustomerId={selectedCustomer} onSelect={setSelectedCustomer} />
-          </div>
-          {activeMembership && (
-            <div className="space-y-2 text-xs sm:text-sm rounded-md border border-border bg-secondary/60 px-3 py-2 text-foreground">
-              <div>
-                Active membership: <span className="font-medium">{activeMembership.categoryName}</span>
-                {activeMembership.endDate ? ` · until ${activeMembership.endDate}` : ""}
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <label htmlFor="pos-membership-user" className="text-muted-foreground shrink-0">
-                  Service for
-                </label>
-                <select
-                  id="pos-membership-user"
-                  value={membershipUserKey}
-                  onChange={(e) => setMembershipUserKey(e.target.value)}
-                  className="flex-1 px-2 py-1.5 bg-background border border-border rounded-md text-sm text-foreground"
-                >
-                  <option value="holder">Membership holder (customer)</option>
-                  {activeMembership.friends.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      Friend/Family: {f.name}{f.phone ? ` (${f.phone})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <p className="text-muted-foreground">
-                Holder: unlimited = Rs. 0 · Friends: only shareable services redeem; unlimited always payable for friends
-              </p>
-            </div>
+    <div className="flex flex-col h-full min-h-0 max-h-full min-w-0 w-full overflow-hidden animate-fade-in">
+      {/* Phone only: Services | Cart tabs */}
+      <div className="md:hidden shrink-0 flex border-b border-border bg-card">
+        <button
+          type="button"
+          onClick={() => setMobilePanel("services")}
+          className={cn(
+            "flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-medium touch-manipulation border-b-2 transition-colors",
+            mobilePanel === "services"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground"
           )}
+        >
+          <LayoutGrid className="h-4 w-4" />
+          Services
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobilePanel("cart")}
+          className={cn(
+            "flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-medium touch-manipulation border-b-2 transition-colors",
+            mobilePanel === "cart"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground"
+          )}
+        >
+          <ShoppingCart className="h-4 w-4" />
+          Cart
+          {cart.length > 0 && (
+            <span className="inline-flex min-w-[1.25rem] h-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-bold px-1.5">
+              {cart.reduce((n, i) => n + i.quantity, 0)}
+            </span>
+          )}
+        </button>
+      </div>
 
-          {/* Service search */}
-          <div className="relative">
-            <label htmlFor="pos-service-search" className="sr-only">
-              Search services
-            </label>
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              id="pos-service-search"
-              type="text"
-              placeholder="Search services..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-secondary text-foreground text-sm rounded-md border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
-            />
-          </div>
-
-          {/* Category selector */}
-          <div className="space-y-2">
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowCategoryDropdown((prev) => !prev)}
-                className="w-full sm:w-auto inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-secondary text-foreground border border-border hover:bg-accent transition-colors"
-              >
-                Categories
-                <ChevronDown className="h-4 w-4" />
-              </button>
-              {showCategoryDropdown && (
-                <div className="absolute z-20 mt-2 w-full sm:w-72 rounded-md border border-border bg-card shadow-lg p-2 space-y-1 max-h-64 overflow-y-auto">
-                  <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
-                    <input
-                      type="checkbox"
-                      checked={allCategoryIds.length > 0 && selectedCategoryIds.length === allCategoryIds.length}
-                      onChange={(e) => {
-                        setSelectedCategoryIds(e.target.checked ? allCategoryIds : []);
-                      }}
-                    />
-                    <span>All categories</span>
+      <div className="flex-1 min-h-0 min-w-0 w-full overflow-hidden grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_min(100%,20rem)] lg:grid-cols-[minmax(0,1fr)_min(100%,22rem)] xl:grid-cols-[minmax(0,1fr)_min(100%,24rem)]">
+        {/* Left - Service Selection */}
+        <div
+          className={cn(
+            "flex flex-col min-h-0 min-w-0 overflow-hidden border-border transition-opacity duration-500",
+            "md:border-r",
+            mobilePanel !== "services" && "hidden md:flex",
+            checkoutComplete && "md:opacity-50 md:pointer-events-none"
+          )}
+        >
+          {/* Header */}
+          <div className="p-3 sm:p-4 border-b border-border space-y-2 sm:space-y-3 shrink-0">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+              <h1 className="text-lg sm:text-xl font-heading font-bold text-foreground shrink-0">POS Billing</h1>
+              <div className="w-full min-w-0 xl:max-w-xs">
+                <CustomerSearch selectedCustomerId={selectedCustomer} onSelect={setSelectedCustomer} />
+              </div>
+            </div>
+            {activeMembership && (
+              <div className="space-y-2 text-xs sm:text-sm rounded-md border border-border bg-secondary/60 px-3 py-2 text-foreground">
+                <div>
+                  Active membership: <span className="font-medium">{activeMembership.categoryName}</span>
+                  {activeMembership.endDate ? ` · until ${activeMembership.endDate}` : ""}
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <label htmlFor="pos-membership-user" className="text-muted-foreground shrink-0">
+                    Service for
                   </label>
-                  {serviceCategoriesState.map((cat) => (
-                    <label
-                      key={cat.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm"
-                    >
+                  <select
+                    id="pos-membership-user"
+                    value={membershipUserKey}
+                    onChange={(e) => setMembershipUserKey(e.target.value)}
+                    className="w-full min-w-0 flex-1 px-2 py-2 sm:py-1.5 bg-background border border-border rounded-md text-sm text-foreground"
+                  >
+                    <option value="holder">Membership holder (customer)</option>
+                    {activeMembership.friends.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        Friend/Family: {f.name}
+                        {f.phone ? ` (${f.phone})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-muted-foreground leading-snug">
+                  Holder: unlimited = Rs. 0 · Friends: only shareable services redeem; unlimited always payable for
+                  friends
+                </p>
+              </div>
+            )}
+
+            {/* Service search */}
+            <div className="relative">
+              <label htmlFor="pos-service-search" className="sr-only">
+                Search services
+              </label>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <input
+                id="pos-service-search"
+                type="text"
+                placeholder="Search services..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 sm:py-2 bg-secondary text-foreground text-sm rounded-md border border-border focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+              />
+            </div>
+
+            {/* Category selector */}
+            <div className="space-y-2">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryDropdown((prev) => !prev)}
+                  className="w-full sm:w-auto inline-flex items-center justify-between sm:justify-center gap-2 px-3 py-2.5 sm:py-2 rounded-md text-sm font-medium bg-secondary text-foreground border border-border hover:bg-accent transition-colors touch-manipulation"
+                >
+                  <span>Categories</span>
+                  <ChevronDown className="h-4 w-4 shrink-0" />
+                </button>
+                {showCategoryDropdown && (
+                  <div className="absolute z-30 mt-2 w-full sm:w-72 max-w-[calc(100vw-1.5rem)] rounded-md border border-border bg-card shadow-lg p-2 space-y-1 max-h-56 sm:max-h-64 overflow-y-auto">
+                    <label className="flex items-center gap-2 px-2 py-2 rounded hover:bg-accent cursor-pointer text-sm touch-manipulation">
                       <input
                         type="checkbox"
-                        checked={selectedCategorySet.has(cat.id)}
+                        checked={allCategoryIds.length > 0 && selectedCategoryIds.length === allCategoryIds.length}
                         onChange={(e) => {
-                          setSelectedCategoryIds((prev) => {
-                            if (e.target.checked) return Array.from(new Set([...prev, cat.id]));
-                            return prev.filter((id) => id !== cat.id);
-                          });
+                          setSelectedCategoryIds(e.target.checked ? allCategoryIds : []);
                         }}
                       />
-                      <span>{cat.name}</span>
+                      <span>All categories</span>
                     </label>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setActiveCategoryFilterId("all")}
-                className={cn(
-                  "px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center justify-center gap-1.5 text-center border transition-colors",
-                  activeCategoryFilterId === "all"
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card text-foreground border-border hover:bg-accent"
+                    {serviceCategoriesState.map((cat) => (
+                      <label
+                        key={cat.id}
+                        className="flex items-center gap-2 px-2 py-2 rounded hover:bg-accent cursor-pointer text-sm touch-manipulation"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedCategorySet.has(cat.id)}
+                          onChange={(e) => {
+                            setSelectedCategoryIds((prev) => {
+                              if (e.target.checked) return Array.from(new Set([...prev, cat.id]));
+                              return prev.filter((id) => id !== cat.id);
+                            });
+                          }}
+                        />
+                        <span className="truncate">{cat.name}</span>
+                      </label>
+                    ))}
+                  </div>
                 )}
-              >
-                <Check className="h-3.5 w-3.5" />
-                All selected
-              </button>
-              {serviceCategoriesState
-                .filter((cat) => selectedCategorySet.has(cat.id))
-                .map((cat) => (
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5 scrollbar-thin">
+                <button
+                  type="button"
+                  onClick={() => setActiveCategoryFilterId("all")}
+                  className={cn(
+                    "shrink-0 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium inline-flex items-center justify-center gap-1.5 text-center border transition-colors touch-manipulation",
+                    activeCategoryFilterId === "all"
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card text-foreground border-border hover:bg-accent"
+                  )}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  All
+                </button>
+                {serviceCategoriesState
+                  .filter((cat) => selectedCategorySet.has(cat.id))
+                  .map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setActiveCategoryFilterId(cat.id)}
+                      className={cn(
+                        "shrink-0 max-w-[10rem] truncate px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-center border transition-colors touch-manipulation",
+                        activeCategoryFilterId === cat.id
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-card text-foreground border-border hover:bg-accent"
+                      )}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Packages */}
+          <div className="px-3 sm:px-4 pb-2 sm:pb-3 space-y-2 shrink-0 border-b border-border/60">
+            <h2 className="text-xs font-heading font-semibold text-muted-foreground uppercase tracking-wide">
+              Packages
+            </h2>
+            {packages.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-1">No packages available</p>
+            ) : (
+              <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory -mx-1 px-1 [scrollbar-width:thin]">
+                {packages.map((pkg) => (
                   <button
-                    key={cat.id}
+                    key={pkg.id}
                     type="button"
-                    onClick={() => setActiveCategoryFilterId(cat.id)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-md text-sm font-medium text-center border transition-colors",
-                      activeCategoryFilterId === cat.id
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-card text-foreground border-border hover:bg-accent"
-                    )}
+                    onClick={() => {
+                      addPackageToCart(pkg.id);
+                      setMobilePanel("cart");
+                    }}
+                    className="snap-start shrink-0 w-[9.5rem] sm:w-[11rem] bg-card border border-border rounded-lg px-3 py-2.5 text-left hover:border-primary transition-colors touch-manipulation"
                   >
-                    {cat.name}
+                    <p className="text-sm font-medium text-card-foreground truncate">{pkg.name}</p>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
+                      {pkg.startDate} – {pkg.endDate}
+                    </p>
+                    <p className="text-sm font-heading font-bold text-primary mt-1">
+                      Rs. {pkg.discountedPrice}
+                    </p>
                   </button>
                 ))}
-            </div>
-          </div>
-        </div>
-
-      {/* Packages */}
-      <div className="px-3 sm:px-4 pb-2 sm:pb-3 space-y-2 shrink-0">
-        <h2 className="text-xs font-heading font-semibold text-muted-foreground uppercase tracking-wide">
-          Packages
-        </h2>
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1">
-          {packages.map((pkg) => (
-            <button
-              key={pkg.id}
-              onClick={() => addPackageToCart(pkg.id)}
-              className="min-w-[140px] sm:min-w-[180px] bg-card border border-border rounded-lg px-3 py-2 text-left hover:border-primary transition-colors touch-manipulation"
-            >
-              <p className="text-sm font-medium text-card-foreground truncate">{pkg.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {pkg.startDate} – {pkg.endDate}
-              </p>
-              <p className="text-sm font-heading font-bold text-primary mt-1">Rs. {pkg.discountedPrice}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-        {/* Service Grid */}
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-            {filteredServices.map((service) => {
-              const inCart = cart.find((c) => c.serviceId === service.id);
-              return (
-                <button
-                  key={service.id}
-                  onClick={() => addToCart(service.id)}
-                  className={cn(
-                    "bg-card border rounded-lg overflow-hidden text-left transition-colors hover:border-primary",
-                    inCart ? "border-primary" : "border-border"
-                  )}
-                >
-                  {service.image && (
-                    <div className="h-24 w-full overflow-hidden bg-muted">
-                      <img src={service.image} alt={service.name} className="h-full w-full object-cover" />
-                    </div>
-                  )}
-                  <div className="p-3">
-                    <p className="text-sm font-medium text-card-foreground">{service.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{service.duration} min</p>
-                    <div className="flex items-center justify-between mt-1.5">
-                      <p className="text-base font-heading font-bold text-primary">Rs. {service.price}</p>
-                      {inCart && (
-                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-bold">
-                          {inCart.quantity}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Right - Billing Cart ~40% */}
-      <div className="flex flex-col bg-card w-full lg:flex-[2] lg:max-w-md min-h-0 lg:min-h-full shrink-0 lg:shrink">
-        <AnimatePresence mode="wait">
-          {!checkoutComplete ? (
-            <motion.div
-              key="cart"
-              initial={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
-              className="flex flex-col h-full min-h-0"
-           >
-              {/* Cart header */}
-              <div className="p-3 sm:p-4 border-b border-border shrink-0">
-                <h2 className="text-sm font-heading font-semibold text-card-foreground">
-                  Cart ({cart.length} {cart.length === 1 ? "item" : "items"})
-                </h2>
-                {customer && <p className="text-xs text-muted-foreground mt-0.5">{customer.name}</p>}
               </div>
+            )}
+          </div>
 
-              {/* Cart items - scrollable */}
-              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-3">
-                {cart.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-12">Select services to begin</p>
-                ) : (
-                  cart.map((item) => (
-                    <div
-                      key={`${item.serviceId}-${item.membershipRedeemed ? "mem" : "pay"}-${item.membershipFriendId || "holder"}`}
-                      className="bg-background border border-border rounded-md p-3"
+          {/* Service Grid */}
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 overscroll-contain">
+            {filteredServices.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-16">No services found</p>
+            ) : (
+              <div className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3">
+                {filteredServices.map((service) => {
+                  const inCart = cart.find((c) => c.serviceId === service.id);
+                  return (
+                    <button
+                      key={service.id}
+                      type="button"
+                      onClick={() => addToCart(service.id)}
+                      className={cn(
+                        "bg-card border rounded-lg overflow-hidden text-left transition-colors hover:border-primary touch-manipulation min-w-0",
+                        inCart ? "border-primary ring-1 ring-primary/30" : "border-border"
+                      )}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{item.serviceName}</p>
-                          {item.membershipRedeemed && (
-                            <p className="text-[11px] text-emerald-600 mt-0.5">
-                              Membership redeemed · Rs. 0
-                              {item.membershipFriendName ? ` · ${item.membershipFriendName}` : ""}
-                            </p>
+                      {service.image && (
+                        <div className="h-20 sm:h-24 w-full overflow-hidden bg-muted">
+                          <img
+                            src={service.image}
+                            alt={service.name}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
+                      <div className="p-2.5 sm:p-3">
+                        <p className="text-xs sm:text-sm font-medium text-card-foreground line-clamp-2 leading-snug">
+                          {service.name}
+                        </p>
+                        <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
+                          {service.duration} min
+                        </p>
+                        <div className="flex items-center justify-between gap-1 mt-1.5">
+                          <p className="text-sm sm:text-base font-heading font-bold text-primary truncate">
+                            Rs. {service.price}
+                          </p>
+                          {inCart && (
+                            <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1 rounded-full bg-primary text-primary-foreground text-[11px] font-bold shrink-0">
+                              {inCart.quantity}
+                            </span>
                           )}
-                          {!item.membershipRedeemed && item.membershipUsedByType === "friend" && (
-                            <p className="text-[11px] text-amber-700 mt-0.5">
-                              Friend/Family paid · {item.membershipFriendName || "Friend"}
-                            </p>
-                          )}
-                          <div className="mt-1 space-y-1">
-                            <p className="text-[11px] text-muted-foreground">Assign employees (max 4)</p>
-                            <div className="flex flex-wrap gap-1">
-                              {employees.map((emp) => {
-                                const assigned = (item.assignedEmployees ?? []).some((a) => a.id === emp.id);
-                                const disableNew = !assigned && (item.assignedEmployees?.length ?? 0) >= 4;
-                                return (
-                                  <button
-                                    key={emp.id}
-                                    type="button"
-                                    disabled={disableNew}
-                                    onClick={() => toggleAssignedEmployee(item.serviceId, emp.id)}
-                                    className={cn(
-                                      "px-2 py-1 rounded border text-[11px] transition-colors",
-                                      assigned
-                                        ? "bg-primary text-primary-foreground border-primary"
-                                        : "bg-secondary text-muted-foreground border-border hover:bg-accent",
-                                      disableNew && "opacity-40 cursor-not-allowed"
-                                    )}
-                                  >
-                                    {emp.name}
-                                  </button>
-                                );
-                              })}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Mobile sticky: jump to cart */}
+          {cart.length > 0 && !checkoutComplete && (
+            <div className="md:hidden shrink-0 border-t border-border p-3 bg-card safe-area-pb">
+              <button
+                type="button"
+                onClick={() => setMobilePanel("cart")}
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-md bg-primary text-primary-foreground text-sm font-semibold touch-manipulation"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4" />
+                  View Cart ({cart.reduce((n, i) => n + i.quantity, 0)})
+                </span>
+                <span>Rs. {grandTotal.toFixed(2)}</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Right - Billing Cart */}
+        <div
+          className={cn(
+            "flex flex-col bg-card min-h-0 min-w-0 w-full overflow-hidden border-t md:border-t-0",
+            mobilePanel !== "cart" && "hidden md:flex"
+          )}
+        >
+          <AnimatePresence mode="wait">
+            {!checkoutComplete ? (
+              <motion.div
+                key="cart"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-col h-full min-h-0"
+              >
+                {/* Cart header */}
+                <div className="p-3 sm:p-4 border-b border-border shrink-0 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-heading font-semibold text-card-foreground">
+                      Cart ({cart.length} {cart.length === 1 ? "item" : "items"})
+                    </h2>
+                    {customer && (
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{customer.name}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMobilePanel("services")}
+                    className="md:hidden shrink-0 text-xs font-medium text-primary px-2 py-1 rounded border border-border touch-manipulation"
+                  >
+                    + Add
+                  </button>
+                </div>
+
+                {/* Cart items - scrollable */}
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-3 overscroll-contain">
+                  {cart.length === 0 ? (
+                    <div className="text-center py-12 px-4 space-y-3">
+                      <p className="text-sm text-muted-foreground">Select services to begin</p>
+                      <button
+                        type="button"
+                        onClick={() => setMobilePanel("services")}
+                        className="md:hidden inline-flex items-center gap-2 px-4 py-2 rounded-md bg-secondary border border-border text-sm font-medium touch-manipulation"
+                      >
+                        <LayoutGrid className="h-4 w-4" />
+                        Browse services
+                      </button>
+                    </div>
+                  ) : (
+                    cart.map((item) => (
+                      <div
+                        key={`${item.serviceId}-${item.membershipRedeemed ? "mem" : "pay"}-${item.membershipFriendId || "holder"}`}
+                        className="bg-background border border-border rounded-md p-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground break-words">{item.serviceName}</p>
+                            {item.membershipRedeemed && (
+                              <p className="text-[11px] text-emerald-600 mt-0.5">
+                                Membership redeemed · Rs. 0
+                                {item.membershipFriendName ? ` · ${item.membershipFriendName}` : ""}
+                              </p>
+                            )}
+                            {!item.membershipRedeemed && item.membershipUsedByType === "friend" && (
+                              <p className="text-[11px] text-amber-700 mt-0.5">
+                                Friend/Family paid · {item.membershipFriendName || "Friend"}
+                              </p>
+                            )}
+                            <div className="mt-2 space-y-1.5">
+                              <p className="text-[11px] text-muted-foreground">Assign employees (max 4)</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {employees.map((emp) => {
+                                  const assigned = (item.assignedEmployees ?? []).some((a) => a.id === emp.id);
+                                  const disableNew = !assigned && (item.assignedEmployees?.length ?? 0) >= 4;
+                                  return (
+                                    <button
+                                      key={emp.id}
+                                      type="button"
+                                      disabled={disableNew}
+                                      onClick={() => toggleAssignedEmployee(item.serviceId, emp.id)}
+                                      className={cn(
+                                        "px-2.5 py-1.5 rounded border text-[11px] transition-colors touch-manipulation",
+                                        assigned
+                                          ? "bg-primary text-primary-foreground border-primary"
+                                          : "bg-secondary text-muted-foreground border-border hover:bg-accent",
+                                        disableNew && "opacity-40 cursor-not-allowed"
+                                      )}
+                                    >
+                                      {emp.name}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <button onClick={() => removeFromCart(item.serviceId)} className="text-muted-foreground hover:text-destructive p-1">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => updateQuantity(item.serviceId, -1)} className="h-6 w-6 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground">
-                            <Minus className="h-3 w-3" />
-                          </button>
-                          <span className="text-sm font-medium w-4 text-center text-foreground">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.serviceId, 1)} className="h-6 w-6 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground">
-                            <Plus className="h-3 w-3" />
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(item.serviceId)}
+                            className="text-muted-foreground hover:text-destructive p-2 -mr-1 -mt-1 touch-manipulation shrink-0"
+                            aria-label="Remove item"
+                          >
+                            <X className="h-4 w-4" />
                           </button>
                         </div>
-                        <span className="text-sm font-heading font-bold text-foreground">Rs. {(item.price * item.quantity).toFixed(2)}</span>
+                        <div className="flex items-center justify-between mt-3 gap-2">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.serviceId, -1)}
+                              className="h-8 w-8 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground touch-manipulation"
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </button>
+                            <span className="text-sm font-medium w-6 text-center text-foreground">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.serviceId, 1)}
+                              className="h-8 w-8 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground touch-manipulation"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <span className="text-sm font-heading font-bold text-foreground shrink-0">
+                            Rs. {(item.price * item.quantity).toFixed(2)}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
+                    ))
+                  )}
+                </div>
 
-              {/* Cart footer - fixed */}
-              <div className="border-t border-border p-3 sm:p-4 space-y-3 shrink-0">
-                <div className="space-y-1.5 text-sm">
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Subtotal</span>
-                    <span className="text-foreground font-medium">Rs. {subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3">
-                    <label htmlFor="pos-discount" className="text-muted-foreground">
-                      Discount
-                    </label>
-                    <select
-                      id="pos-discount"
-                      value={selectedDiscountId}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setSelectedDiscountId(value);
-                        if (value !== "manual") {
-                          setManualDiscount("");
-                        }
-                      }}
-                      className="w-full sm:w-auto min-w-0 flex-1 sm:min-w-[11rem] bg-secondary text-foreground text-sm rounded px-2 py-1 border border-border"
-                    >
-                      <option value="none">None</option>
-                      <option value="manual">Manual amount...</option>
-                      {discounts.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name} — {d.type === "percentage" ? `${d.value}%` : `Rs. ${d.value}`}
-                          {typeof d.maxCap === "number" ? ` (cap Rs. ${d.maxCap})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {selectedDiscountId === "manual" && (
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3">
-                      <label htmlFor="pos-manual-discount" className="text-muted-foreground">
-                        Manual discount
+                {/* Cart footer - fixed */}
+                <div className="border-t border-border p-3 sm:p-4 space-y-3 shrink-0 max-h-[55%] sm:max-h-none overflow-y-auto overscroll-contain">
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Subtotal</span>
+                      <span className="text-foreground font-medium">Rs. {subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="pos-discount" className="text-muted-foreground">
+                        Discount
+                      </label>
+                      <select
+                        id="pos-discount"
+                        value={selectedDiscountId}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setSelectedDiscountId(value);
+                          if (value !== "manual") {
+                            setManualDiscount("");
+                          }
+                        }}
+                        className="w-full min-w-0 bg-secondary text-foreground text-sm rounded px-2 py-2 border border-border"
+                      >
+                        <option value="none">None</option>
+                        <option value="manual">Manual amount...</option>
+                        {discounts.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name} — {d.type === "percentage" ? `${d.value}%` : `Rs. ${d.value}`}
+                            {typeof d.maxCap === "number" ? ` (cap Rs. ${d.maxCap})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {selectedDiscountId === "manual" && (
+                      <div className="flex flex-col gap-1.5">
+                        <label htmlFor="pos-manual-discount" className="text-muted-foreground">
+                          Manual discount
+                        </label>
+                        <input
+                          id="pos-manual-discount"
+                          type="number"
+                          value={manualDiscount}
+                          onChange={(e) => setManualDiscount(e.target.value)}
+                          className="w-full min-w-0 bg-background text-foreground text-sm rounded px-2 py-2 border border-border"
+                          placeholder="Enter amount"
+                        />
+                      </div>
+                    )}
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Discount amount</span>
+                        <span className="text-destructive">-Rs. {discountAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>
+                        Tax ({((Number.isFinite(settings.taxRate) ? settings.taxRate : 0) * 100).toFixed(2)}%)
+                      </span>
+                      <span className="text-foreground">Rs. {tax.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-base font-heading font-bold pt-2 border-t border-border text-foreground">
+                      <span>Grand Total</span>
+                      <span>Rs. {grandTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="pos-paid-amount" className="text-muted-foreground">
+                        Paid now
                       </label>
                       <input
-                        id="pos-manual-discount"
+                        id="pos-paid-amount"
                         type="number"
-                        value={manualDiscount}
-                        onChange={(e) => setManualDiscount(e.target.value)}
-                        className="w-full sm:w-auto min-w-0 flex-1 sm:min-w-[11rem] bg-background text-foreground text-sm rounded px-2 py-1 border border-border"
-                        placeholder="Enter amount"
+                        value={paidInput}
+                        onChange={(e) => setPaidInput(e.target.value)}
+                        className="w-full min-w-0 bg-background text-foreground text-sm rounded px-2 py-2 border border-border"
+                        placeholder={`Full: ${grandTotal.toFixed(2)}`}
                       />
                     </div>
-                  )}
-                  {discountAmount > 0 && (
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Discount amount</span>
-                      <span className="text-destructive">-Rs. {discountAmount.toFixed(2)}</span>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>Remaining balance</span>
+                      <span className="text-destructive">
+                        Rs.{" "}
+                        {(billingMode === "existing_due" ? dueRemainingAfterPayment : remainingBalance).toFixed(2)}
+                      </span>
                     </div>
-                  )}
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Tax ({((Number.isFinite(settings.taxRate) ? settings.taxRate : 0) * 100).toFixed(2)}%)</span>
-                    <span className="text-foreground">Rs. {tax.toFixed(2)}</span>
+                    {customerBalanceSummary && (
+                      <div className="text-xs text-muted-foreground rounded border border-border p-2 space-y-0.5">
+                        {hasOutstandingDue && (
+                          <div className="flex flex-col gap-1.5 pb-1 mb-1 border-b border-border">
+                            <p className="text-foreground font-medium">Billing option</p>
+                            <label className="inline-flex items-center gap-2 touch-manipulation">
+                              <input
+                                type="radio"
+                                checked={billingMode === "existing_due"}
+                                onChange={() => setBillingMode("existing_due")}
+                              />
+                              Apply payment to existing due
+                            </label>
+                            <label className="inline-flex items-center gap-2 touch-manipulation">
+                              <input
+                                type="radio"
+                                checked={billingMode === "new_invoice"}
+                                onChange={() => setBillingMode("new_invoice")}
+                              />
+                              Create new invoice
+                            </label>
+                          </div>
+                        )}
+                        {!hasOutstandingDue && (
+                          <div className="flex flex-col gap-1.5 pb-1 mb-1 border-b border-border">
+                            <p className="text-foreground font-medium">Billing option</p>
+                            <label className="inline-flex items-center gap-2 touch-manipulation">
+                              <input
+                                type="radio"
+                                checked={billingMode === "new_invoice"}
+                                onChange={() => setBillingMode("new_invoice")}
+                              />
+                              Create new invoice
+                            </label>
+                          </div>
+                        )}
+                        <p>Customer total billed: Rs. {customerBalanceSummary.total_amount.toFixed(2)}</p>
+                        <p>Total paid: Rs. {customerBalanceSummary.paid_amount.toFixed(2)}</p>
+                        <p>Outstanding dues: Rs. {customerBalanceSummary.remaining_balance.toFixed(2)}</p>
+                      </div>
+                    )}
+                    {checkoutError && <p className="text-xs text-destructive">{checkoutError}</p>}
                   </div>
-                  <div className="flex justify-between text-base font-heading font-bold pt-2 border-t border-border text-foreground">
-                    <span>Grand Total</span>
-                    <span>Rs. {grandTotal.toFixed(2)}</span>
+
+                  {/* Checkout buttons */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCheckout("cash")}
+                      disabled={!canCheckout}
+                      className="flex flex-col items-center gap-1 py-3 rounded-md bg-success text-success-foreground text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity touch-manipulation"
+                    >
+                      <Banknote className="h-4 w-4" />
+                      Cash
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCheckout("card")}
+                      disabled={!canCheckout}
+                      className="flex flex-col items-center gap-1 py-3 rounded-md bg-primary text-primary-foreground text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity touch-manipulation"
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      Card
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCheckout("online")}
+                      disabled={!canCheckout}
+                      className="flex flex-col items-center gap-1 py-3 rounded-md bg-secondary text-secondary-foreground text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity border border-border touch-manipulation"
+                    >
+                      <Globe className="h-4 w-4" />
+                      Online
+                    </button>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-3">
-                    <label htmlFor="pos-paid-amount" className="text-muted-foreground">
-                      Paid now
-                    </label>
-                    <input
-                      id="pos-paid-amount"
-                      type="number"
-                      value={paidInput}
-                      onChange={(e) => setPaidInput(e.target.value)}
-                      className="w-full sm:w-auto min-w-0 flex-1 sm:min-w-[11rem] bg-background text-foreground text-sm rounded px-2 py-1 border border-border"
-                      placeholder={`Full: ${grandTotal.toFixed(2)}`}
-                    />
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="receipt"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-col h-full min-h-0"
+              >
+                <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 space-y-6 overflow-y-auto">
+                  <div className="h-16 w-16 rounded-full bg-success/10 flex items-center justify-center">
+                    <FileText className="h-8 w-8 text-success" />
                   </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Remaining balance</span>
-                    <span className="text-destructive">
-                      Rs. {(billingMode === "existing_due" ? dueRemainingAfterPayment : remainingBalance).toFixed(2)}
-                    </span>
+                  <div className="text-center">
+                    <h2 className="text-lg font-heading font-bold text-card-foreground">Payment Complete</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Invoice {completedInvoiceNumber}</p>
+                    <p className="text-2xl font-heading font-bold text-foreground mt-3">
+                      Rs. {completedAmount.toFixed(2)}
+                    </p>
                   </div>
-                  {customerBalanceSummary && (
-                    <div className="text-xs text-muted-foreground rounded border border-border p-2 space-y-0.5">
-                      {hasOutstandingDue && (
-                        <div className="flex flex-col gap-1 pb-1 mb-1 border-b border-border">
-                          <p className="text-foreground font-medium">Billing option</p>
-                          <label className="inline-flex items-center gap-2">
-                            <input
-                              type="radio"
-                              checked={billingMode === "existing_due"}
-                              onChange={() => setBillingMode("existing_due")}
-                            />
-                            Apply payment to existing due
-                          </label>
-                          <label className="inline-flex items-center gap-2">
-                            <input
-                              type="radio"
-                              checked={billingMode === "new_invoice"}
-                              onChange={() => setBillingMode("new_invoice")}
-                            />
-                            Create new invoice
-                          </label>
-                        </div>
-                      )}
-                      {!hasOutstandingDue && (
-                        <div className="flex flex-col gap-1 pb-1 mb-1 border-b border-border">
-                          <p className="text-foreground font-medium">Billing option</p>
-                          <label className="inline-flex items-center gap-2">
-                            <input
-                              type="radio"
-                              checked={billingMode === "new_invoice"}
-                              onChange={() => setBillingMode("new_invoice")}
-                            />
-                            Create new invoice
-                          </label>
-                        </div>
-                      )}
-                      <p>Customer total billed: Rs. {customerBalanceSummary.total_amount.toFixed(2)}</p>
-                      <p>Total paid: Rs. {customerBalanceSummary.paid_amount.toFixed(2)}</p>
-                      <p>Outstanding dues: Rs. {customerBalanceSummary.remaining_balance.toFixed(2)}</p>
-                    </div>
-                  )}
-                  {checkoutError && <p className="text-xs text-destructive">{checkoutError}</p>}
+
+                  <div className="w-full max-w-sm space-y-2">
+                    <button
+                      type="button"
+                      onClick={printInvoice}
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity touch-manipulation"
+                    >
+                      <Printer className="h-4 w-4" />
+                      Print Invoice
+                    </button>
+                    <button
+                      type="button"
+                      onClick={printInvoice}
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-secondary text-secondary-foreground rounded-md text-sm font-medium border border-border hover:bg-accent transition-colors touch-manipulation"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download PDF
+                    </button>
+                  </div>
                 </div>
 
-                {/* Checkout buttons */}
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                <div className="border-t border-border p-4 shrink-0">
                   <button
-                    onClick={() => handleCheckout("cash")}
-                    disabled={!canCheckout}
-                    className="flex flex-col items-center gap-0.5 sm:gap-1 py-2.5 sm:py-3 rounded-md bg-success text-success-foreground text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity touch-manipulation"
+                    type="button"
+                    onClick={() => {
+                      handleNewTransaction();
+                      setMobilePanel("services");
+                    }}
+                    className="w-full py-3 bg-foreground text-background rounded-md text-sm font-heading font-semibold hover:opacity-90 transition-opacity touch-manipulation"
                   >
-                    <Banknote className="h-4 w-4" />
-                    Cash
-                  </button>
-                  <button
-                    onClick={() => handleCheckout("card")}
-                    disabled={!canCheckout}
-                    className="flex flex-col items-center gap-0.5 sm:gap-1 py-2.5 sm:py-3 rounded-md bg-primary text-primary-foreground text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity touch-manipulation"
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    Card
-                  </button>
-                  <button
-                    onClick={() => handleCheckout("online")}
-                    disabled={!canCheckout}
-                    className="flex flex-col items-center gap-0.5 sm:gap-1 py-2.5 sm:py-3 rounded-md bg-secondary text-secondary-foreground text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity border border-border touch-manipulation"
-                  >
-                    <Globe className="h-4 w-4" />
-                    Online
+                    New Transaction
                   </button>
                 </div>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="receipt"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="flex flex-col h-full"
-            >
-              <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-6">
-                <div className="h-16 w-16 rounded-full bg-success/10 flex items-center justify-center">
-                  <FileText className="h-8 w-8 text-success" />
-                </div>
-                <div className="text-center">
-                  <h2 className="text-lg font-heading font-bold text-card-foreground">Payment Complete</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Invoice {completedInvoiceNumber}</p>
-                  <p className="text-2xl font-heading font-bold text-foreground mt-3">
-                    Rs. {completedAmount.toFixed(2)}
-                  </p>
-                </div>
-
-                <div className="w-full space-y-2">
-                  <button
-                    onClick={printInvoice}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
-                  >
-                    <Printer className="h-4 w-4" />
-                    Print Invoice
-                  </button>
-                  <button
-                    onClick={printInvoice}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-secondary text-secondary-foreground rounded-md text-sm font-medium border border-border hover:bg-accent transition-colors"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download PDF
-                  </button>
-                </div>
-              </div>
-
-              <div className="border-t border-border p-4">
-                <button
-                  onClick={handleNewTransaction}
-                  className="w-full py-2.5 bg-foreground text-background rounded-md text-sm font-heading font-semibold hover:opacity-90 transition-opacity"
-                >
-                  New Transaction
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
