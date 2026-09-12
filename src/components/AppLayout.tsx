@@ -10,6 +10,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const isMobile = useIsMobile();
   const location = useLocation();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const isPos = location.pathname === "/pos";
 
   useEffect(() => {
     if (isMobile) setSheetOpen(false);
@@ -32,7 +33,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <AppSidebar variant="drawer" />
         </SheetContent>
       </Sheet>
-      <main className={cn("flex-1 min-w-0 h-full overflow-y-auto", isMobile && "pt-14")}>
+      <main
+        className={cn(
+          "flex-1 min-w-0 w-full h-full min-h-0 overflow-x-hidden",
+          isPos ? "overflow-hidden" : "overflow-y-auto",
+          isMobile && "pt-14"
+        )}
+      >
         {children}
       </main>
     </div>
