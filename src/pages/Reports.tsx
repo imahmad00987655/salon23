@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { downloadCsv, openPrintWindow } from "@/lib/exporting";
 import { getApiOrigin } from "@/lib/apiBase";
+import { formatMoney } from "@/lib/currency";
 
 type Period = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -156,18 +157,18 @@ const Reports = () => {
     const title = `Reports (${period})`;
     const reportRange = `${fromDate || "Auto"} to ${toDate || "Auto"}`;
     const salesRows = (filteredTransactions.length ? filteredTransactions : transactions)
-      .map((t) => `<tr><td>${t.date}</td><td>${t.customerName}</td><td class="right">Rs. ${Number(t.total ?? 0).toFixed(2)}</td></tr>`)
+      .map((t) => `<tr><td>${t.date}</td><td>${t.customerName}</td><td class="right">${formatMoney(t.total ?? 0)}</td></tr>`)
       .join("");
     const revenueRows = revenueCategories
-      .map((r) => `<tr><td>${r.name}</td><td class="right">Rs. ${Number(r.value).toLocaleString()}</td></tr>`)
+      .map((r) => `<tr><td>${r.name}</td><td class="right">${formatMoney(r.value)}</td></tr>`)
       .join("");
     const expenseRows = expenses
-      .map((e) => `<tr><td>${e.expense_date}</td><td>${e.title}</td><td>${e.payment_method}</td><td class="right">Rs. ${Number(e.amount ?? 0).toFixed(2)}</td></tr>`)
+      .map((e) => `<tr><td>${e.expense_date}</td><td>${e.title}</td><td>${e.payment_method}</td><td class="right">${formatMoney(e.amount ?? 0)}</td></tr>`)
       .join("");
     const employeeRows = employeePerf
       .map(
         (e) =>
-          `<tr><td>${e.name}</td><td>${e.role.replace("_", " ")}</td><td class="right">${e.servicesPerformed}</td><td class="right">Rs. ${Number(e.revenueGenerated).toLocaleString()}</td><td class="right">Rs. ${Number(e.commissionEarned).toLocaleString()}</td></tr>`
+          `<tr><td>${e.name}</td><td>${e.role.replace("_", " ")}</td><td class="right">${e.servicesPerformed}</td><td class="right">${formatMoney(e.revenueGenerated)}</td><td class="right">${formatMoney(e.commissionEarned)}</td></tr>`
       )
       .join("");
     const body = `
@@ -177,25 +178,25 @@ const Reports = () => {
       <h2>Summary</h2>
       <table>
         <tbody>
-          <tr><td>Total Revenue</td><td class="right">Rs. ${totalRevenue.toFixed(2)}</td></tr>
-          <tr><td>Total Expenses</td><td class="right">Rs. ${totalExpenses.toFixed(2)}</td></tr>
-          <tr><td><strong>Net Profit / Loss</strong></td><td class="right"><strong>Rs. ${netProfitLoss.toFixed(2)}</strong></td></tr>
+          <tr><td>Total Revenue</td><td class="right">${formatMoney(totalRevenue)}</td></tr>
+          <tr><td>Total Expenses</td><td class="right">${formatMoney(totalExpenses)}</td></tr>
+          <tr><td><strong>Net Profit / Loss</strong></td><td class="right"><strong>${formatMoney(netProfitLoss)}</strong></td></tr>
         </tbody>
       </table>
       <h2>Revenue Payment Split</h2>
       <table>
         <tbody>
-          <tr><td>Cash</td><td class="right">Rs. ${revenueByPaymentType.cash.toFixed(2)}</td></tr>
-          <tr><td>Online</td><td class="right">Rs. ${revenueByPaymentType.online.toFixed(2)}</td></tr>
-          <tr><td>Card</td><td class="right">Rs. ${revenueByPaymentType.card.toFixed(2)}</td></tr>
+          <tr><td>Cash</td><td class="right">${formatMoney(revenueByPaymentType.cash)}</td></tr>
+          <tr><td>Online</td><td class="right">${formatMoney(revenueByPaymentType.online)}</td></tr>
+          <tr><td>Card</td><td class="right">${formatMoney(revenueByPaymentType.card)}</td></tr>
         </tbody>
       </table>
       <h2>Expense Payment Split</h2>
       <table>
         <tbody>
-          <tr><td>Cash</td><td class="right">Rs. ${expensesByPaymentType.cash.toFixed(2)}</td></tr>
-          <tr><td>Online</td><td class="right">Rs. ${expensesByPaymentType.online.toFixed(2)}</td></tr>
-          <tr><td>Card</td><td class="right">Rs. ${expensesByPaymentType.card.toFixed(2)}</td></tr>
+          <tr><td>Cash</td><td class="right">${formatMoney(expensesByPaymentType.cash)}</td></tr>
+          <tr><td>Online</td><td class="right">${formatMoney(expensesByPaymentType.online)}</td></tr>
+          <tr><td>Card</td><td class="right">${formatMoney(expensesByPaymentType.card)}</td></tr>
         </tbody>
       </table>
       <h2>Sales (by invoice)</h2>
@@ -304,16 +305,16 @@ const Reports = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Total Revenue</p>
-          <p className="text-xl font-heading font-bold text-foreground">Rs. {totalRevenue.toFixed(2)}</p>
+          <p className="text-xl font-heading font-bold text-foreground">{formatMoney(totalRevenue)}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Total Expenses</p>
-          <p className="text-xl font-heading font-bold text-foreground">Rs. {totalExpenses.toFixed(2)}</p>
+          <p className="text-xl font-heading font-bold text-foreground">{formatMoney(totalExpenses)}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Net Profit / Loss</p>
           <p className={cn("text-xl font-heading font-bold", netProfitLoss >= 0 ? "text-success" : "text-destructive")}>
-            Rs. {netProfitLoss.toFixed(2)}
+            {formatMoney(netProfitLoss)}
           </p>
         </div>
       </div>
@@ -321,15 +322,15 @@ const Reports = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-card border border-border rounded-lg p-4">
           <h3 className="text-sm font-semibold text-card-foreground mb-2">Revenue Payment Split</h3>
-          <p className="text-sm text-muted-foreground">Cash: Rs. {revenueByPaymentType.cash.toFixed(2)}</p>
-          <p className="text-sm text-muted-foreground">Online: Rs. {revenueByPaymentType.online.toFixed(2)}</p>
-          <p className="text-sm text-muted-foreground">Card: Rs. {revenueByPaymentType.card.toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground">Cash: {formatMoney(revenueByPaymentType.cash)}</p>
+          <p className="text-sm text-muted-foreground">Online: {formatMoney(revenueByPaymentType.online)}</p>
+          <p className="text-sm text-muted-foreground">Card: {formatMoney(revenueByPaymentType.card)}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
           <h3 className="text-sm font-semibold text-card-foreground mb-2">Expenses Payment Split</h3>
-          <p className="text-sm text-muted-foreground">Cash: Rs. {expensesByPaymentType.cash.toFixed(2)}</p>
-          <p className="text-sm text-muted-foreground">Online: Rs. {expensesByPaymentType.online.toFixed(2)}</p>
-          <p className="text-sm text-muted-foreground">Card: Rs. {expensesByPaymentType.card.toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground">Cash: {formatMoney(expensesByPaymentType.cash)}</p>
+          <p className="text-sm text-muted-foreground">Online: {formatMoney(expensesByPaymentType.online)}</p>
+          <p className="text-sm text-muted-foreground">Card: {formatMoney(expensesByPaymentType.card)}</p>
         </div>
       </div>
 
@@ -383,7 +384,7 @@ const Reports = () => {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="label" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "13px" }} formatter={(value: number) => [`Rs. ${Number(value).toFixed(2)}`, "Revenue"]} />
+                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "13px" }} formatter={(value: number) => [formatMoney(value), "Revenue"]} />
                 <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3, fill: "hsl(var(--primary))" }} />
               </LineChart>
             </ResponsiveContainer>
@@ -407,7 +408,7 @@ const Reports = () => {
                   interval={0}
                   width={140}
                 />
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "13px" }} formatter={(value: number) => [`Rs. ${Number(value).toFixed(2)}`, "Revenue"]} />
+                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "13px" }} formatter={(value: number) => [formatMoney(value), "Revenue"]} />
                 <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -435,8 +436,8 @@ const Reports = () => {
                   <td className="py-3 px-2 font-medium text-foreground">{emp.name}</td>
                   <td className="py-3 px-2 text-muted-foreground capitalize">{emp.role.replace("_", " ")}</td>
                   <td className="py-3 px-2 text-right text-foreground">{emp.servicesPerformed}</td>
-                  <td className="py-3 px-2 text-right text-foreground">Rs. {emp.revenueGenerated.toLocaleString()}</td>
-                  <td className="py-3 px-2 text-right text-success font-medium">Rs. {emp.commissionEarned.toLocaleString()}</td>
+                  <td className="py-3 px-2 text-right text-foreground">{formatMoney(emp.revenueGenerated)}</td>
+                  <td className="py-3 px-2 text-right text-success font-medium">{formatMoney(emp.commissionEarned)}</td>
                 </tr>
               ))}
             </tbody>
@@ -461,7 +462,7 @@ const Reports = () => {
                 <td className="py-3 px-2 text-foreground">{exp.expense_date}</td>
                 <td className="py-3 px-2 text-foreground">{exp.title}</td>
                 <td className="py-3 px-2 text-muted-foreground capitalize">{exp.payment_method}</td>
-                <td className="py-3 px-2 text-right text-foreground">Rs. {Number(exp.amount ?? 0).toFixed(2)}</td>
+                <td className="py-3 px-2 text-right text-foreground">{formatMoney(exp.amount ?? 0)}</td>
               </tr>
             ))}
           </tbody>
