@@ -25,6 +25,7 @@ import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "@/lib/appSettings";
 import { DEFAULT_DISCOUNTS, DISCOUNTS_STORAGE_KEY } from "@/lib/discounts";
 import { openPrintWindow, buildProfessionalInvoiceHtml } from "@/lib/exporting";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatMoney, formatAmount } from "@/lib/currency";
 
 const API_BASE = getApiOrigin();
 const TRANSACTIONS_API_BASE = `${API_BASE}/transactions.php`;
@@ -917,7 +918,7 @@ const POSBilling = () => {
                       {pkg.startDate} – {pkg.endDate}
                     </p>
                     <p className="text-sm font-heading font-bold text-primary mt-1">
-                      Rs. {pkg.discountedPrice}
+                      {formatMoney(pkg.discountedPrice)}
                     </p>
                   </button>
                 ))}
@@ -962,7 +963,7 @@ const POSBilling = () => {
                         </p>
                         <div className="flex items-center justify-between gap-1 mt-1.5">
                           <p className="text-sm sm:text-base font-heading font-bold text-primary truncate">
-                            Rs. {service.price}
+                            {formatMoney(service.price)}
                           </p>
                           {inCart && (
                             <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1 rounded-full bg-primary text-primary-foreground text-[11px] font-bold shrink-0">
@@ -990,7 +991,7 @@ const POSBilling = () => {
                   <ShoppingCart className="h-4 w-4" />
                   View Cart ({cart.reduce((n, i) => n + i.quantity, 0)})
                 </span>
-                <span>Rs. {grandTotal.toFixed(2)}</span>
+                <span>{formatMoney(grandTotal)}</span>
               </button>
             </div>
           )}
@@ -1122,7 +1123,7 @@ const POSBilling = () => {
                             </button>
                           </div>
                           <span className="text-sm font-heading font-bold text-foreground shrink-0">
-                            Rs. {(item.price * item.quantity).toFixed(2)}
+                            {formatMoney(item.price * item.quantity)}
                           </span>
                         </div>
                       </div>
@@ -1135,7 +1136,7 @@ const POSBilling = () => {
                   <div className="space-y-1.5 text-sm">
                     <div className="flex justify-between text-muted-foreground">
                       <span>Subtotal</span>
-                      <span className="text-foreground font-medium">Rs. {subtotal.toFixed(2)}</span>
+                      <span className="text-foreground font-medium">{formatMoney(subtotal)}</span>
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <label htmlFor="pos-discount" className="text-muted-foreground">
@@ -1157,8 +1158,8 @@ const POSBilling = () => {
                         <option value="manual">Manual amount...</option>
                         {discounts.map((d) => (
                           <option key={d.id} value={d.id}>
-                            {d.name} — {d.type === "percentage" ? `${d.value}%` : `Rs. ${d.value}`}
-                            {typeof d.maxCap === "number" ? ` (cap Rs. ${d.maxCap})` : ""}
+                            {d.name} — {d.type === "percentage" ? `${d.value}%` : formatMoney(d.value, 0)}
+                            {typeof d.maxCap === "number" ? ` (cap ${formatMoney(d.maxCap, 0)})` : ""}
                           </option>
                         ))}
                       </select>
@@ -1181,18 +1182,18 @@ const POSBilling = () => {
                     {discountAmount > 0 && (
                       <div className="flex justify-between text-muted-foreground">
                         <span>Discount amount</span>
-                        <span className="text-destructive">-Rs. {discountAmount.toFixed(2)}</span>
+                        <span className="text-destructive">-{formatMoney(discountAmount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-muted-foreground">
                       <span>
                         Tax ({((Number.isFinite(settings.taxRate) ? settings.taxRate : 0) * 100).toFixed(2)}%)
                       </span>
-                      <span className="text-foreground">Rs. {tax.toFixed(2)}</span>
+                      <span className="text-foreground">{formatMoney(tax)}</span>
                     </div>
                     <div className="flex justify-between text-base font-heading font-bold pt-2 border-t border-border text-foreground">
                       <span>Grand Total</span>
-                      <span>Rs. {grandTotal.toFixed(2)}</span>
+                      <span>{formatMoney(grandTotal)}</span>
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <label htmlFor="pos-paid-amount" className="text-muted-foreground">
@@ -1204,14 +1205,15 @@ const POSBilling = () => {
                         value={paidInput}
                         onChange={(e) => setPaidInput(e.target.value)}
                         className="w-full min-w-0 bg-background text-foreground text-sm rounded px-2 py-2 border border-border"
-                        placeholder={`Full: ${grandTotal.toFixed(2)}`}
+                        placeholder={`Full: ${formatAmount(grandTotal)}`}
                       />
                     </div>
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Remaining balance</span>
                       <span className="text-destructive">
-                        Rs.{" "}
-                        {(billingMode === "existing_due" ? dueRemainingAfterPayment : remainingBalance).toFixed(2)}
+                        {formatMoney(
+                          billingMode === "existing_due" ? dueRemainingAfterPayment : remainingBalance
+                        )}
                       </span>
                     </div>
                     {customerBalanceSummary && (
@@ -1250,9 +1252,9 @@ const POSBilling = () => {
                             </label>
                           </div>
                         )}
-                        <p>Customer total billed: Rs. {customerBalanceSummary.total_amount.toFixed(2)}</p>
-                        <p>Total paid: Rs. {customerBalanceSummary.paid_amount.toFixed(2)}</p>
-                        <p>Outstanding dues: Rs. {customerBalanceSummary.remaining_balance.toFixed(2)}</p>
+                        <p>Customer total billed: {formatMoney(customerBalanceSummary.total_amount)}</p>
+                        <p>Total paid: {formatMoney(customerBalanceSummary.paid_amount)}</p>
+                        <p>Outstanding dues: {formatMoney(customerBalanceSummary.remaining_balance)}</p>
                       </div>
                     )}
                     {checkoutError && <p className="text-xs text-destructive">{checkoutError}</p>}
@@ -1306,7 +1308,7 @@ const POSBilling = () => {
                     <h2 className="text-lg font-heading font-bold text-card-foreground">Payment Complete</h2>
                     <p className="text-sm text-muted-foreground mt-1">Invoice {completedInvoiceNumber}</p>
                     <p className="text-2xl font-heading font-bold text-foreground mt-3">
-                      Rs. {completedAmount.toFixed(2)}
+                      {formatMoney(completedAmount)}
                     </p>
                   </div>
 
