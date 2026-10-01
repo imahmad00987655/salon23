@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { downloadCsv } from "@/lib/exporting";
 import { getApiOrigin } from "@/lib/apiBase";
+import { formatMoney } from "@/lib/currency";
 
 const EXPENSES_API_BASE = `${getApiOrigin()}/expenses.php`;
 
@@ -213,7 +214,7 @@ const Expenses = () => {
         <div>
           <h1 className="text-2xl font-heading font-bold text-foreground">Expenses</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {loading ? "Loading..." : `${filteredExpenses.length} entries • Total Rs. ${totalAmount.toFixed(2)}`}
+            {loading ? "Loading..." : `${filteredExpenses.length} entries • Total ${formatMoney(totalAmount)}`}
           </p>
           {error && <p className="text-xs text-destructive mt-1">{error}</p>}
         </div>
@@ -331,7 +332,7 @@ const Expenses = () => {
                 <td className="py-3 px-4 text-muted-foreground">{item.notes || "—"}</td>
                 <td className="py-3 px-4 text-muted-foreground">{item.createdByName || "—"}</td>
                 <td className="py-3 px-4 text-muted-foreground capitalize">{(item as Expense & { paymentMethod?: string }).paymentMethod || "cash"}</td>
-                <td className="py-3 px-4 text-right font-medium text-foreground">Rs. {Number(item.amount).toFixed(2)}</td>
+                <td className="py-3 px-4 text-right font-medium text-foreground">{formatMoney(item.amount)}</td>
                 <td className="py-3 px-4">
                   <div className="flex items-center justify-center gap-2">
                     {canEditDelete ? (
