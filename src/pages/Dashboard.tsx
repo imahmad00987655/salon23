@@ -5,6 +5,7 @@ import { Transaction, Employee } from "@/types/pos";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiOrigin } from "@/lib/apiBase";
+import { formatMoney } from "@/lib/currency";
 
 const API_ORIGIN = getApiOrigin();
 const STATS_API_BASE = `${API_ORIGIN}/stats.php`;
@@ -136,25 +137,25 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title={`${lovLabel} Revenue`}
-          value={`Rs. ${Number(todayRevenue || 0).toFixed(2)}`}
+          value={formatMoney(todayRevenue || 0)}
           subtitle=""
           icon={<DollarSign className="h-5 w-5" />}
         />
         <StatCard
           title={`${lovLabel} Expense`}
-          value={`Rs. ${Number(todayExpenses || 0).toFixed(2)}`}
+          value={formatMoney(todayExpenses || 0)}
           subtitle=""
           icon={<DollarSign className="h-5 w-5" />}
         />
         <StatCard
           title={`${lovLabel} Net`}
-          value={`Rs. ${Number(todayNet || 0).toFixed(2)}`}
+          value={formatMoney(todayNet || 0)}
           subtitle="Revenue - Expense"
           icon={<DollarSign className="h-5 w-5" />}
         />
         <StatCard
           title={`${lovLabel} In Hand`}
-          value={`Rs. ${Number(cashInHand || 0).toFixed(2)}`}
+          value={formatMoney(cashInHand || 0)}
           subtitle="Available after expenses"
           icon={<DollarSign className="h-5 w-5" />}
         />
@@ -172,13 +173,13 @@ const Dashboard = () => {
         />
         <StatCard
           title="Membership Today"
-          value={`Rs. ${Number(membershipTodayRevenue || 0).toFixed(2)}`}
+          value={formatMoney(membershipTodayRevenue || 0)}
           subtitle={`${membershipTodayCount} sale${membershipTodayCount === 1 ? "" : "s"} today`}
           icon={<CreditCard className="h-5 w-5" />}
         />
         <StatCard
           title="Membership Overall"
-          value={`Rs. ${Number(membershipOverallRevenue || 0).toFixed(2)}`}
+          value={formatMoney(membershipOverallRevenue || 0)}
           subtitle={`${membershipOverallCount} sale${membershipOverallCount === 1 ? "" : "s"} · ${activeMemberships} active`}
           icon={<CreditCard className="h-5 w-5" />}
         />
@@ -186,7 +187,7 @@ const Dashboard = () => {
           <StatCard
             title="Top Employee"
             value={topEmployee ? topEmployee.name : "—"}
-            subtitle={topEmployee ? `Rs. ${Number(topEmployee.revenueGenerated).toFixed(2)} generated` : "No data yet"}
+            subtitle={topEmployee ? `${formatMoney(topEmployee.revenueGenerated)} generated` : "No data yet"}
             icon={<Star className="h-5 w-5" />}
           />
         )}
@@ -195,20 +196,20 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           title="Cash Overall (Revenue / Expense / Net)"
-          value={`Rs. ${(overallPaymentBreakdown.cash - overallExpenseBreakdown.cash).toFixed(2)}`}
-          subtitle={`Rs. ${overallPaymentBreakdown.cash.toFixed(2)} / Rs. ${overallExpenseBreakdown.cash.toFixed(2)}`}
+          value={formatMoney(overallPaymentBreakdown.cash - overallExpenseBreakdown.cash)}
+          subtitle={`${formatMoney(overallPaymentBreakdown.cash)} / ${formatMoney(overallExpenseBreakdown.cash)}`}
           icon={<DollarSign className="h-5 w-5" />}
         />
         <StatCard
           title="Online Overall (Revenue / Expense / Net)"
-          value={`Rs. ${(overallPaymentBreakdown.online - overallExpenseBreakdown.online).toFixed(2)}`}
-          subtitle={`Rs. ${overallPaymentBreakdown.online.toFixed(2)} / Rs. ${overallExpenseBreakdown.online.toFixed(2)}`}
+          value={formatMoney(overallPaymentBreakdown.online - overallExpenseBreakdown.online)}
+          subtitle={`${formatMoney(overallPaymentBreakdown.online)} / ${formatMoney(overallExpenseBreakdown.online)}`}
           icon={<DollarSign className="h-5 w-5" />}
         />
         <StatCard
           title="Card Overall (Revenue / Expense / Net)"
-          value={`Rs. ${(overallPaymentBreakdown.card - overallExpenseBreakdown.card).toFixed(2)}`}
-          subtitle={`Rs. ${overallPaymentBreakdown.card.toFixed(2)} / Rs. ${overallExpenseBreakdown.card.toFixed(2)}`}
+          value={formatMoney(overallPaymentBreakdown.card - overallExpenseBreakdown.card)}
+          subtitle={`${formatMoney(overallPaymentBreakdown.card)} / ${formatMoney(overallExpenseBreakdown.card)}`}
           icon={<DollarSign className="h-5 w-5" />}
         />
       </div>
@@ -231,7 +232,7 @@ const Dashboard = () => {
                     borderRadius: "6px",
                     fontSize: "13px",
                   }}
-                  formatter={(value: number) => [`Rs. ${Number(value).toFixed(2)}`, "Revenue"]}
+                  formatter={(value: number) => [formatMoney(value), "Revenue"]}
                 />
                 <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -257,7 +258,7 @@ const Dashboard = () => {
                     borderRadius: "6px",
                     fontSize: "13px",
                   }}
-                  formatter={(value: number) => [`Rs. ${Number(value).toFixed(2)}`, "Revenue"]}
+                  formatter={(value: number) => [formatMoney(value), "Revenue"]}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -273,7 +274,7 @@ const Dashboard = () => {
                   <span className="text-muted-foreground">{item.name}</span>
                 </div>
                 <span className="font-medium text-card-foreground">
-                  Rs. {Number(item.value ?? 0).toFixed(2)}
+                  {formatMoney(item.value ?? 0)}
                 </span>
               </div>
             ))}
@@ -305,7 +306,7 @@ const Dashboard = () => {
                     {(tx.items ?? []).map((i) => i.serviceName).join(", ")}
                   </td>
                   <td className="py-3 px-2 font-medium text-foreground">
-                    Rs. {Number(tx.total ?? 0).toFixed(2)}
+                    {formatMoney(tx.total ?? 0)}
                   </td>
                   <td className="py-3 px-2">
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground capitalize">
