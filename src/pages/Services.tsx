@@ -4,6 +4,7 @@ import { Plus, Search, X, Clock, ImagePlus, ChevronDown, Check } from "lucide-re
 import { cn } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { getApiOrigin } from "@/lib/apiBase";
+import { formatMoney } from "@/lib/currency";
 
 const API_BASE = getApiOrigin();
 const SERVICES_API_BASE = `${API_BASE}/services.php`;
@@ -401,7 +402,7 @@ const Services = () => {
                   <td className="py-3 px-3 sm:px-4 text-muted-foreground">
                     {cat?.name}
                   </td>
-                  <td className="py-3 px-3 sm:px-4 text-foreground">Rs. {s.price}</td>
+                  <td className="py-3 px-3 sm:px-4 text-foreground">{formatMoney(s.price)}</td>
                   <td className="py-3 px-3 sm:px-4 text-muted-foreground"><Clock className="h-3 w-3 inline mr-1" />{s.duration} min</td>
                   <td className="py-3 px-3 sm:px-4">
                     <button onClick={(e) => { e.stopPropagation(); toggleActive(s.id); }} className={cn("px-2 py-0.5 rounded text-xs font-medium", s.active ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
@@ -447,7 +448,7 @@ const Services = () => {
                     </div>
                   </td>
                   <td className="py-3 px-3 sm:px-4 text-muted-foreground">{cat?.name}</td>
-                  <td className="py-3 px-3 sm:px-4 text-foreground">Rs. {s.price}</td>
+                  <td className="py-3 px-3 sm:px-4 text-foreground">{formatMoney(s.price)}</td>
                   <td className="py-3 px-3 sm:px-4 text-muted-foreground"><Clock className="h-3 w-3 inline mr-1" />{s.duration} min</td>
                   <td className="py-3 px-3 sm:px-4">
                     <button onClick={(e) => { e.stopPropagation(); toggleActive(s.id); }} className="px-2 py-0.5 rounded text-xs font-medium bg-destructive/10 text-destructive">
