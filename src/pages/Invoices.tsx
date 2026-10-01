@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { openPrintWindow, buildProfessionalInvoiceHtml, downloadCsv } from "@/lib/exporting";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiOrigin } from "@/lib/apiBase";
+import { formatMoney } from "@/lib/currency";
 
 const TRANSACTIONS_API_BASE = `${getApiOrigin()}/transactions.php`;
 
@@ -235,15 +236,15 @@ const Invoices = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-card border border-border rounded-md p-3">
           <p className="text-xs text-muted-foreground">Filtered Total</p>
-          <p className="font-heading font-bold text-foreground">Rs. {totals.total.toFixed(2)}</p>
+          <p className="font-heading font-bold text-foreground">{formatMoney(totals.total)}</p>
         </div>
         <div className="bg-card border border-border rounded-md p-3">
           <p className="text-xs text-muted-foreground">Filtered Paid</p>
-          <p className="font-heading font-bold text-success">Rs. {totals.paid.toFixed(2)}</p>
+          <p className="font-heading font-bold text-success">{formatMoney(totals.paid)}</p>
         </div>
         <div className="bg-card border border-border rounded-md p-3">
           <p className="text-xs text-muted-foreground">Filtered Remaining</p>
-          <p className="font-heading font-bold text-destructive">Rs. {totals.remaining.toFixed(2)}</p>
+          <p className="font-heading font-bold text-destructive">{formatMoney(totals.remaining)}</p>
         </div>
       </div>
 
@@ -397,9 +398,9 @@ const Invoices = () => {
                     {t.paymentStatus ?? "paid"}
                   </span>
                 </td>
-                <td className="py-3 px-4 text-right text-foreground">Rs. {Number(t.paidAmount ?? t.total ?? 0).toFixed(2)}</td>
-                <td className="py-3 px-4 text-right text-destructive">Rs. {Number(t.remainingBalance ?? 0).toFixed(2)}</td>
-                <td className="py-3 px-4 text-right font-heading font-bold text-foreground">Rs. {Number(t.total ?? 0).toFixed(2)}</td>
+                <td className="py-3 px-4 text-right text-foreground">{formatMoney(t.paidAmount ?? t.total ?? 0)}</td>
+                <td className="py-3 px-4 text-right text-destructive">{formatMoney(t.remainingBalance ?? 0)}</td>
+                <td className="py-3 px-4 text-right font-heading font-bold text-foreground">{formatMoney(t.total ?? 0)}</td>
                 <td className="py-3 px-4">
                   <div className="flex items-center justify-center gap-1 flex-wrap">
                     <button
@@ -539,7 +540,7 @@ const Invoices = () => {
                         <td className="py-2 px-3 text-foreground">{item.serviceName}</td>
                         <td className="py-2 px-3 text-muted-foreground">{getItemEmployeeNames(item)}</td>
                         <td className="py-2 px-3 text-center text-foreground">{item.quantity}</td>
-                        <td className="py-2 px-3 text-right text-foreground">Rs. {(item.price * item.quantity).toFixed(2)}</td>
+                        <td className="py-2 px-3 text-right text-foreground">{formatMoney(item.price * item.quantity)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -550,21 +551,21 @@ const Invoices = () => {
               <div className="space-y-1.5 text-sm pt-2">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Subtotal</span>
-                  <span className="text-foreground">Rs. {Number(selectedInvoice.subtotal ?? 0).toFixed(2)}</span>
+                  <span className="text-foreground">{formatMoney(selectedInvoice.subtotal ?? 0)}</span>
                 </div>
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Discount</span>
-                    <span className="text-destructive">-Rs. {Number(selectedInvoice.discount ?? 0).toFixed(2)}</span>
+                    <span className="text-destructive">-{formatMoney(selectedInvoice.discount ?? 0)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-muted-foreground">
                   <span>Tax</span>
-                  <span className="text-foreground">Rs. {Number(selectedInvoice.tax ?? 0).toFixed(2)}</span>
+                  <span className="text-foreground">{formatMoney(selectedInvoice.tax ?? 0)}</span>
                 </div>
                 <div className="flex justify-between font-heading font-bold text-base pt-2 border-t border-border text-foreground">
                   <span>Grand Total</span>
-                  <span>Rs. {Number(selectedInvoice.total ?? 0).toFixed(2)}</span>
+                  <span>{formatMoney(selectedInvoice.total ?? 0)}</span>
                 </div>
               </div>
             </div>
@@ -708,7 +709,7 @@ function EditInvoiceModal({
               className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm"
             />
             <p className="text-xs text-muted-foreground">
-              Remaining: Rs. {Math.max(0, Number(transaction.total ?? 0) - paidAmount).toFixed(2)}
+              Remaining: {formatMoney(Math.max(0, Number(transaction.total ?? 0) - paidAmount))}
             </p>
           </div>
           <p className="text-xs text-muted-foreground">Line items and totals are not editable here.</p>
