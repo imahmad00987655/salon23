@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Service, ServiceCategory, Customer, Employee, Package, Discount, CartItem, Transaction } from "@/types/pos";
 import { cn } from "@/lib/utils";
 import {
@@ -161,7 +161,8 @@ const POSBilling = () => {
             role: String(row.role),
             phone: String(row.phone),
             commissionRate: Number(row.commission_rate ?? row.commissionRate ?? 0),
-            active: Boolean(row.active),
+            // PDO may return "0"/"1" strings — only treat 1/true as active
+            active: Number(row.active) === 1 || row.active === true,
             servicesPerformed: Number(row.services_performed ?? row.servicesPerformed ?? 0),
             revenueGenerated: Number(row.revenue_generated ?? row.revenueGenerated ?? 0),
             commissionEarned: Number(row.commission_earned ?? row.commissionEarned ?? 0),
@@ -305,10 +306,14 @@ const POSBilling = () => {
     return matchesCategory && matchesActiveCategory && matchesSearch && s.active;
   });
 
+  // Inactive employees must not appear (or auto-assign) on POS
+  const activeEmployees = useMemo(() => employees.filter((e) => e.active), [employees]);
+  const defaultEmployee = activeEmployees[0];
+
   const addToCart = async (serviceId: string) => {
     if (billingMode === "existing_due") return;
     const service = services.find((s) => s.id === serviceId);
-    if (!service || !employees[0]) return;
+    if (!service || !defaultEmployee) return;
 
     let price = service.price;
     let membershipId: string | undefined;
@@ -374,9 +379,9 @@ const POSBilling = () => {
           serviceName: service.name,
           price,
           quantity: 1,
-          employeeId: employees[0].id,
-          employeeName: employees[0].name,
-          assignedEmployees: [{ id: employees[0].id, name: employees[0].name }],
+          employeeId: defaultEmployee.id,
+          employeeName: defaultEmployee.name,
+          assignedEmployees: [{ id: defaultEmployee.id, name: defaultEmployee.name }],
           membershipId,
           membershipRedeemed,
           membershipStatus,
@@ -391,7 +396,7 @@ const POSBilling = () => {
   const addPackageToCart = (packageId: string) => {
     if (billingMode === "existing_due") return;
     const pkg = packages.find((p) => p.id === packageId);
-    if (!pkg) return;
+    if (!pkg || !defaultEmployee) return;
 
     const existing = cart.find((c) => c.serviceId === packageId);
     if (existing) {
@@ -404,9 +409,9 @@ const POSBilling = () => {
           serviceName: pkg.name,
           price: pkg.discountedPrice,
           quantity: 1,
-          employeeId: employees[0].id,
-          employeeName: employees[0].name,
-          assignedEmployees: [{ id: employees[0].id, name: employees[0].name }],
+          employeeId: defaultEmployee.id,
+          employeeName: defaultEmployee.name,
+          assignedEmployees: [{ id: defaultEmployee.id, name: defaultEmployee.name }],
         },
       ]);
     }
@@ -429,7 +434,7 @@ const POSBilling = () => {
   };
 
   const toggleAssignedEmployee = (serviceId: string, employeeId: string) => {
-    const emp = employees.find((e) => e.id === employeeId);
+    const emp = activeEmployees.find((e) => e.id === employeeId);
     if (!emp) return;
     setCart((prev) =>
       prev.map((c) => {
@@ -1069,7 +1074,7 @@ const POSBilling = () => {
                             <div className="mt-2 space-y-1.5">
                               <p className="text-[11px] text-muted-foreground">Assign employees (max 4)</p>
                               <div className="flex flex-wrap gap-1.5">
-                                {employees.map((emp) => {
+                                {activeEmployees.map((emp) => {
                                   const assigned = (item.assignedEmployees ?? []).some((a) => a.id === emp.id);
                                   const disableNew = !assigned && (item.assignedEmployees?.length ?? 0) >= 4;
                                   return (
@@ -1090,6 +1095,9 @@ const POSBilling = () => {
                                     </button>
                                   );
                                 })}
+                                {activeEmployees.length === 0 && (
+                                  <p className="text-[11px] text-destructive">No active employees available</p>
+                                )}
                               </div>
                             </div>
                           </div>
