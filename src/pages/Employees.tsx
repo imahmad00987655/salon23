@@ -71,7 +71,7 @@ const Employees = () => {
         role: String(row.role),
         phone: String(row.phone),
         commissionRate: Number(row.commission_rate ?? row.commissionRate ?? 0),
-        active: Boolean(row.active),
+        active: Number(row.active) === 1 || row.active === true,
         servicesPerformed: Number(row.services_performed ?? row.servicesPerformed ?? 0),
         revenueGenerated: Number(row.revenue_generated ?? row.revenueGenerated ?? 0),
         commissionEarned: Number(row.commission_earned ?? row.commissionEarned ?? 0),
