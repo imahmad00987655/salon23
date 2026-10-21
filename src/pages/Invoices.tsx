@@ -114,7 +114,8 @@ const Invoices = () => {
   const loadTransactions = async () => {
     try {
       const params = new URLSearchParams();
-      params.set("limit", "200");
+      // Fetch all invoices (backend caps at 100000). Old low limits were dropping older bills.
+      params.set("limit", "0");
       if (fromDate) params.set("from", fromDate);
       if (toDate) params.set("to", toDate);
       if (search.trim()) params.set("search", search.trim());
@@ -128,6 +129,7 @@ const Invoices = () => {
       if (!res.ok) return;
       const data = (await res.json()) as Transaction[];
       setTransactions(Array.isArray(data) ? data : []);
+      setPage(1);
     } catch {
       // ignore
     }
@@ -222,7 +224,12 @@ const Invoices = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-heading font-bold text-foreground">Invoices</h1>
-          <p className="text-sm text-muted-foreground mt-1">{transactions.length} invoices</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {filtered.length === transactions.length
+              ? `${transactions.length} invoices`
+              : `${filtered.length} of ${transactions.length} invoices`}
+            {paymentStatusFilter === "all" ? " · cancelled hidden" : ""}
+          </p>
         </div>
         <button
           type="button"
